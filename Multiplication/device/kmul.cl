@@ -1,4 +1,7 @@
+//OPENCL this function turn on Intel FPGA accelerator  
+#define block_size 64
 
+//First function naive implementation
 __kernel void kmul1(__global float* restrict A, __global float* restrict B, __global float* restrict C, const int dimension) {
     int i = get_global_id(0);
     int j = get_global_id(2);
@@ -12,8 +15,8 @@ __kernel void kmul1(__global float* restrict A, __global float* restrict B, __gl
 
 }
 
-#define block_size 64
 
+// Second function using division of the matrix. We using a block size of 64
 __kernel void kmul2(__global float* restrict A, __global float* restrict B, __global float* restrict C, const int dimension) {
    
 	const int row = get_local_id(0); 

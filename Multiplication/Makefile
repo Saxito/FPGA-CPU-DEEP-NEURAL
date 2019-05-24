@@ -24,12 +24,12 @@ LIBS :=
 
 # Compiler.
 CXX := g++
-#CXX := arm-linux-gnueabihf-g++
-#CXX := arm-altera-eabi-g++ 
+#CXX := arm-linux-gnueabihf-g++ #If we want to compile for arm processor
+
 
 # OpenCL compile and link flags.
 AOCL_COMPILE_CONFIG := $(shell aocl compile-config)
-#AOCL_LINK_CONFIG := $(shell aocl link-config)
+#AOCL_LINK_CONFIG := $(shell aocl link-config) # if we want to compile for arm processor 
 AOCL_LINK_CONFIG := -L/home/guillaume/altera/16.0/hld/host/linux64/lib -Wl,--no-as-needed -lalteracl -lstdc++ -lelf
 
 CXXFLAGS += -O2 -D__USE_XOPEN2K8 -fopenmp

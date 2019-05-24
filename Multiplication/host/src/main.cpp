@@ -1,13 +1,3 @@
-/*
- * Meant to be used as template for new applications...
- * Recommended to refer to OpenCL at Khronos:
- *    https://www.khronos.org/registry/OpenCL/sdk/2.0/docs/man/xhtml/
- * Recommended to refer to Intel Altera OpenCL SDK for FPGA Programming Guide
- * Recommended to refer to Intel Altera OpenCL SDK for FPGA Best Practices Guide 
- * 
- * Template HOST to call simple kernel.
- */
-
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +9,13 @@
 
 using namespace aocl_utils;
 
+#define DIMENSION_MIN 2
+#define DIMENSION_MAX 8192
+#define MAX_SIZE_CPU 1024
+
+#define LOCAL_DIM 64
+#define DEBUG 0
+
 // OpenCL runtime configuration
 static cl_platform_id platform = NULL;
 static cl_device_id device = NULL;
@@ -28,21 +25,17 @@ static cl_kernel kernel = NULL;
 static cl_program program = NULL;
 static cl_int status;
 
-#define DIMENSION_MAX 8192
-#define MAX_SIZE_CPU 1024
-#define LOCAL_DIM 64
-#define DEBUG 0
 
 
 float start_time, spend_time_FPGA, spend_time_CPU;
-int dim=2; 
+int dim = DIMENSION_MIN
 float* A;
 float* B;
 float* C;
 
 cl_mem ABuffer, BBuffer, CBuffer;
 
-// Function prototypes
+// Function 
 bool init();
 void cleanup();
 void make_matrix(float* m, int type);
@@ -55,7 +48,6 @@ void read_buffer();
 void devices_info();
 
 
-// Entry point.
 int main() {
   printf("MATRIX MULTIPLICATION\n");
   printf("Matrix dimension;FPGA time;CPUTIME\n");
@@ -67,9 +59,11 @@ int main() {
     }
     printf(" %i;",dim );
 
+    
     if(DEBUG)
       printf("Begin load some matrix\n");
-    //full matrix with not random number 
+    
+    //fill matrix with not random number 
     A=(float*)malloc(sizeof(float)*dim*dim);
     B=(float*)malloc(sizeof(float)*dim*dim);
     C=(float*)malloc(sizeof(float)*dim*dim);
@@ -116,7 +110,7 @@ int main() {
     //reload the first matrix;
     make_matrix(C,0);
 
-    //CPU Matrix multiplication
+    //CPU Matrix multiplication we stop at MAX_SIZE_CPU because CPU is too long 
     if(dim<=MAX_SIZE_CPU){
       start_time =getCurrentTimestamp();
       compute_matrix(A,B,C, dim);
@@ -134,6 +128,7 @@ int main() {
 
     // Free
     cleanup(); 
+   
     dim=dim*2;
   }
   
@@ -145,17 +140,16 @@ void make_matrix(float* m, int type){
   for(int i =0; i<dim; i++){
     for(int j= 0; j<dim; j++){
       if(type != 0){
-        if(i==j){
-          m[i*dim+j]=1;
-        }else{
-          m[i*dim+j]=0;
-       }
+        m[i*dim+j]= random()%1000;
       }else{
         m[i*dim+j]=0;
       }
     }
   }
-  //show_matrix(m);
+  
+  if(DEBUG)
+    show_matrix(m);
+  
   return;
 }
 
@@ -175,7 +169,6 @@ void compute_matrix(float* a, float* b ,float* c, int n){
   #pragma unroll
     for (i = 0; i < n; i++) {
       for (j = 0; j < n; j++) {
-        // C(i, j) = sum(over k) A(i,k) * B(k,j)
         for (k = 0; k < n; k++) {
           c[i*n+j] += a[i*n+k] * b[k*n+j];
         }
@@ -193,6 +186,7 @@ void create_buffer(){
           sizeof(float) * dim*dim, B, &status);
   CBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
           sizeof(float) * dim*dim, C, &status);
+  
   if(DEBUG)
     printf("Buffer create\n");
 }
@@ -253,6 +247,7 @@ bool init() {
     return false;
   }
 
+  srand(time(NULL));
   // Get the OpenCL platform. TODO: More than one platform can be found
   cl_uint num_platforms;
   status = clGetPlatformIDs(1, &platform, &num_platforms);
