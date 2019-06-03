@@ -1,0 +1,36 @@
+[J[J[J7[?47h[?1h=[1;24r[m[H[2J[24;1HE325: ATTENTION
+Found a swap file by the name "host/src/.main.cpp.swp"
+[10Cowned by: root   dated: Wed Apr 27 08:29:09 2016
+[9Cfile name: ~root/Multiplication_Maxtrix/Multiplication/host/src/main.c
+[23;80Hp[24;1Hp
+[10Cmodified: YES
+[9Cuser name: root   host name: socfpga
+[8Cprocess ID: 850
+While opening file "host/src/main.cpp"
+[13Cdated: Wed Apr 27 07:59:00 2016
+
+(1) Another program may be editing the same file.  If this is the case,
+    be careful not to end up with two different instances of the same
+    file when making changes.  Quit, or continue with caution.
+(2) An edit session for this file crashed.
+    If this is the case, use ":recover" or "vim -r host/src/main.cpp"
+    to recover the changes (see ":help recovery").
+    If you did this already, delete the swap file "host/src/.main.cpp.swp"
+    to avoid this message.
+
+Swap file "host/src/.main.cpp.swp" already exists!
+[O]pen Read-Only, (E)dit anyway, (R)ecover, (D)elete it, (Q)uit, (A)bort:[24;1H[K[24;1H
+"host/src/main.cpp"[23;1H"host/src/main.cpp" 403 lines, 10701 characters[24;1H[K[24;1HPress ENTER or type command to continue[1;1H[L[1;1H/*
+In this matrix multiplication we only use square matrix.
+We will compute spend time for multiplication with differentes way :
+  -FPGA with naive implementation[4;34H[K[5;3H-FPGA with optimisation[5;28H[K[6;3H-CPU with naive implementation[6;33H[K[7;1H  -CPU with optimisation with OpenMP
+*/[8;11H[K[9;10H[K[10;1H#include <assert.h>[10;21H[K[11;1H#include <stdio.h>[11;20H[K[12;1H#include <stdlib.h>[12;21H[K[13;1H#include <math.h>
+#include <cstring>[14;19H[K[15;1H#include <omp.h>[15;17H[K[16;1H#include "CL/opencl.h"[16;23H[K[17;1H#include "AOCLUtils/aocl_utils.h"[17;35H[K[18;5H[K[19;1Husing namespace aocl_utils;[19;28H[K[20;5H[K[21;1H#define DIMENSION_MIN 2[21;24H[K[22;1H#define DIMENSION_MAX 8192
+#define MAX_SIZE_CPU 512[23;25H[K[24;1H[K[1;1H
+
+
+  
+  
+  
+  
+[24;1H:x[?1l>[2J[?47l8

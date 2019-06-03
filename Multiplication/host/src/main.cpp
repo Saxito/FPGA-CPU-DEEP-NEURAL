@@ -22,7 +22,7 @@ using namespace aocl_utils;
 #define DIMENSION_MAX 512
 #define MAX_SIZE_CPU 512
 
-#define LOCAL_DIM 64
+#define LOCAL_DIM 16
 #define DEBUG 0
 
 #define MAX_NUMBER_MATRIX 1000
@@ -109,11 +109,9 @@ float FPGA_matrix(int dimension_matrix, int optimisation){
     
     size_t global_size[2]={(size_t)dimension_matrix,(size_t)dimension_matrix};
 
-    size_t local_size[2]= {(size_t)dimension_matrix,(size_t)dimension_matrix}; 
-    if(dimension_matrix>64){
-      local_size[0]= (size_t)LOCAL_DIM;
-      local_size[1]= (size_t)LOCAL_DIM; 
-    }
+    size_t local_size[2]= {(size_t)32,(size_t)32}; 
+    
+
     
     status = clEnqueueNDRangeKernel(queue, kernel, 2, NULL, global_size, local_size, 0, NULL, NULL);
     checkError(status, "Failed to launch kernel");

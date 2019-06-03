@@ -44,6 +44,7 @@ __kernel void kmul2(__global float* restrict A, __global float* restrict B, __gl
     	numTiles = dimension/block_size;
     }
     
+
     for (int t=0; t<numTiles; t++) {
  
         const int tiledRow = block_size*t + row;
@@ -52,6 +53,7 @@ __kernel void kmul2(__global float* restrict A, __global float* restrict B, __gl
         A_local[col][row] = A[globalCol*dimension + tiledRow];
  
         barrier(CLK_LOCAL_MEM_FENCE);
+        #pragma omp for
         for (int k=0; k<block_size; k++) {
             tmp += B_local[k][row] * A_local[col][k];
         }

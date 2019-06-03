@@ -33,7 +33,7 @@ AOCL_COMPILE_CONFIG := $(shell aocl compile-config)
 AOCL_LINK_CONFIG := -L/home/guillaume/altera/16.0/hld/host/linux64/lib -Wl,--no-as-needed -lalteracl -lstdc++ -lelf
 
 CXXFLAGS += -O2 -D__USE_XOPEN2K8 -fopenmp
-CXXFLAGS += -Wall -I$AALSDK/include -I/usr/local/include -DHAVE_CONFIG_H -DTESTB -g -L/opt/aalsdk/lib  -L/usr/local/lib 
+CXXFLAGS += -Wall -I$AALSDK/include -I/usr/local/include -DHAVE_CONFIG_H -DTESTB -g -L/opt/aalsdk/lib  -L/usr/local/lib
 
 # Make it all!
 all : $(TARGET_DIR)/$(TARGET)
@@ -51,7 +51,8 @@ $(TARGET_DIR)/$(TARGET) : Makefile $(SRCS) $(INC_FILES)
 emukernel:
 	aoc -march=emulator -g -v device/kmul.cl -o bin/kmul.aocx --board de10_standard_sharedonly
 
-kernel: emukernel
+kernel:
+	aoc -g -v device/kmul.cl -o bin/kmul.aocx --board de10_standard_sharedonly
 
 # Standard make targets
 clean :
