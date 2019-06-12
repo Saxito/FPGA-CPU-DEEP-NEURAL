@@ -124,7 +124,7 @@ void reading_file(){
       nb_raw_matrix++;
   }
   fclose(stream);
-  nb_col_matrix = NB_COL_NSL+lenght_protocol+lenght_flag-3;
+  nb_col_matrix = NB_COL_NSL+lenght_protocol+lenght_flag+lenght_service-3;
   if(DEBUG){
     show_tab(tab_protocol,lenght_protocol);
     printf("%d\n", lenght_protocol);
@@ -245,7 +245,7 @@ int* get_output(){
 }
 
 int get_col_matrix(){
-  return nb_col_matrix;
+  return col;
 }
 
 int get_raw_matrix(){

@@ -44,16 +44,18 @@ void create_kernel();
 void init_layer(LAYER* l, double* matrix, int index, int currentlayer);
 
 void init_layer(LAYER* l, double* matrix, int index, int currentlayer){
+    
     l->typeLayer = currentlayer;
     //printf("%d\n", layer_size[currentlayer]);
   if(currentlayer == 0){
-    l->nbnode = col_matrix;
-    l->value = (double*)malloc(sizeof(double)*col_matrix);
-    for(int i=0; i<col_matrix;i++){
-      l->value[i]=matrix[index*col_matrix+i];
+    l->nbnode = layer_size[currentlayer];
+    l->value = (double*)malloc(sizeof(double)*layer_size[currentlayer]);
+    for(int i=0; i<layer_size[currentlayer];i++){
+      l->value[i]=matrix[index*layer_size[currentlayer]+i];
+      //printf("value in %f\n", l->value[i]);
     }
-    l->weight = (double*)malloc(sizeof(double)*col_matrix*layer_size[currentlayer+1]);
-    for (int i = 0; i < layer_size[currentlayer+1]*col_matrix; ++i)
+    l->weight = (double*)malloc(sizeof(double)*layer_size[currentlayer]*layer_size[currentlayer+1]);
+    for (int i = 0; i < layer_size[currentlayer+1]*layer_size[currentlayer]; ++i)
     {
       l->weight[i] = 1.0 * (double)rand() / RAND_MAX - 1.0/2;
     }
@@ -86,7 +88,15 @@ void init_layer(LAYER* l, double* matrix, int index, int currentlayer){
     for(int i=0; i<layer_size[currentlayer];i++){
       l->error_prev[i]=0.0;
     }
+}
 
+void free_layer(LAYER* l){
+  free(l->value);
+  free(l->weight);
+  free(l->biais);
+  free(l->value_prev);
+  free(l->error);
+  free(l->error_prev);
 }
 
 double sigmoid(double a){
@@ -103,6 +113,9 @@ void rnnsetstart(LAYER* tab_layer[]){
     }else{
       //printf("node : %d\n", tab_layer[i]->nbnode);
       for(int k =0; k<tab_layer[i]->nbnode ;k++){
+        if(tab_layer[i]->typeLayer == 0){
+          //printf("value in %f\n", tab_layer[i]->value[k] );
+        }
         tab_layer[i]->value_prev[k] = tab_layer[i]->value[k];
       }
     }
@@ -123,38 +136,15 @@ void compute_matrix_tan(double* a, double* b ,double* c, double* biais, int n, i
   int i, j;
     for (i = 0; i < m; i++) {
       for (j = 0; j < n; j++) {
-        //printf("i: %d j: %d \n", i,j);
         c[i] += b[j*m+i]*a[j];
-        if(j==n-1){
-          //printf("mres %f\n",c[i] );
-        }
       }
-      //c[i] += biais[i];
+      // printf("value[i] : %f\n", c[i]);
+      // printf("weight[i] : %f\n", b[j*m+i]);
+      // printf("value -1 [i] : %f\n", a[j]);
+
       c[i]= sigmoid(c[i]);
-      //printf("value calculer :%f\n", c[i]);
     }
 }
-
-void softmax(double *input, int input_len) {
-  assert(input);
-  float m = -INFINITY;
-  for (int i = 0; i < input_len; i++) {
-    if (input[i] > m) {
-      m = input[i];
-    }
-  }
-
-  float sum = 0.0;
-  for (int i = 0; i < input_len; i++) {
-    sum += expf(input[i] - m);
-  }
-
-  float offset = m + logf(sum);
-  for (int i = 0; i < input_len; i++) {
-    input[i] = expf(input[i] - offset);
-  }
-}
-
 
 void rnnset(LAYER* tab_layer[]){
   //printf("Begin rnn set\n");
@@ -174,20 +164,10 @@ void rnnset(LAYER* tab_layer[]){
 }
 
 void soustraction_vector(double* a, double* b, double* c, int n){
-  double res = 0.0;
   for (int i = 0; i < n; ++i)
   {
-    c[i] = a[i]-b[i]; //+=
-    //printf("a[i] %f \n",a[i]);
-    //printf("b[i] %f \n",b[i]);
-    if(c[i]<0){
-      res -=c[i];
-    }else{
-      res+=c[i];
-    }
-   //printf("c[i] %f\n", c[i]);
+    c[i] = a[i]-b[i];
   }
-  //printf("error tot = %f\n", res);
 
 }
 void compute_matrix(double* a, double* b, double *c, int n, int m){
@@ -202,7 +182,7 @@ void compute_matrix(double* a, double* b, double *c, int n, int m){
 void vector_multiplication_constant(double* a, double b, double* c, double taille,int behaviour){
   for (int i = 0; i < taille; ++i)
   { 
-    //printf("error %f\n",a[i]);
+    
     if(behaviour){
       c[i]*= a[i]*b;
     }
@@ -225,7 +205,6 @@ void change_weight(double* weight, double* wchange, int ligne, int colonne){
     {
       //printf("%f //", weight[i*colonne+j]);
       weight[i*colonne+j]-=wchange[j];
-      //printf("%f ", weight[i*colonne+j]);
 
     }
     //printf("\n");
@@ -270,30 +249,24 @@ void rnnlearn(LAYER* tab_layer[], double* out, double learningrate){
   // Initialize error to zero for the output layer:
   // Compute the error for output neurons, and 
   // initialize it to 0 for the other neurons:
-  // printf("init learn\n");
   for (int i = 0; i < NB_LAYOUT; ++i){
     for (int j = 0; j < tab_layer[i]->nbnode; ++j){
       tab_layer[i]->error[j]=0.0;
     }
     if(tab_layer[i]->typeLayer == NB_LAYOUT-1){
       //soustraction de vecteur avec out qui est le résultat;
-      // printf("begin soustraction\n");
       soustraction_vector(tab_layer[i]->value, out, tab_layer[i]->error, tab_layer[i]->nbnode);
     }
 
   }
   for (int i = NB_LAYOUT-2; i >= 0; i--){
     //multiplication de matrice  error i = error i+1 * weight i
-    // printf("begin compute matrix\n");
     compute_matrix(tab_layer[i+1]->error, tab_layer[i]->weight, tab_layer[i]->error, tab_layer[i+1]->nbnode, tab_layer[i]->nbnode);
   }
   double* derivative;
   double* wchange;
   // printf("begin for\n");
   for(int i = NB_LAYOUT-2; i>=0; i--){
-    //printf("%d\n",tab_layer[i+1]->nbnode );
-    //printf("begin wchange derivative\n");
-    //printf("%d\n",tab_layer[i+1]->nbnode);
     derivative = (double*)malloc(sizeof(double)*tab_layer[i+1]->nbnode);
     // printf("end derivative\n");
     wchange = (double*)malloc(sizeof(double)*tab_layer[i+1]->nbnode);
@@ -313,16 +286,20 @@ void rnnlearn(LAYER* tab_layer[], double* out, double learningrate){
       {
         wchange[l]=derivative[l];
       }
-      //wchange *= value i+1
+      //wchange *= value i+1 
       vector_multiplication(wchange, tab_layer[i+1]->value, wchange, tab_layer[i+1]->nbnode);
       //weight i -= wchange 
       change_weight(tab_layer[i]->weight, wchange, tab_layer[i]->nbnode, tab_layer[i+1]->nbnode);
+
       //normalisation entre -5 et 5
       normalisation(tab_layer[i]->weight, 5, tab_layer[i+1]->nbnode*tab_layer[i]->nbnode);
+
       //biais i+1 -= derivative;
       change_biais(tab_layer[i+1]->biais, tab_layer[i+1]->nbnode, derivative,1);
+
       //normalisation du biais entre -5 et 5
       normalisation(tab_layer[i+1]->biais, 5,tab_layer[i+1]->nbnode);
+
     }else{
       //derivative = 1.0 - (value i+1)²
       vector_multiplication_carre(tab_layer[i+1]->value, derivative, tab_layer[i+1]->nbnode);
@@ -332,17 +309,21 @@ void rnnlearn(LAYER* tab_layer[], double* out, double learningrate){
       for (int l = 0; l < tab_layer[i+1]->nbnode; ++l)
       {
         wchange[l]=derivative[l];
+        //printf("wchange %f\n", wchange[l]);
       }
       //wchange *= value i+1
       vector_multiplication(wchange, tab_layer[i+1]->value, wchange, tab_layer[i+1]->nbnode);
       // printf("end mult\n");
       //weight i -= wchange
       change_weight(tab_layer[i]->weight, wchange, tab_layer[i]->nbnode, tab_layer[i+1]->nbnode);
+      //normalisation(tab_layer[i]->weight, 5, tab_layer[i+1]->nbnode*tab_layer[i]->nbnode);
       
       // printf("end changew\n");
       //biais i -= derivate 
       change_biais(tab_layer[i+1]->biais, tab_layer[i+1]->nbnode, derivative,1);
       // printf("end changeb\n");
+      //normalisation(tab_layer[i+1]->biais, 5,tab_layer[i+1]->nbnode);
+
     }
     free(derivative);
     free(wchange);
@@ -404,26 +385,46 @@ double* choose_output(int* output_process, int i){
 
 void init_layer_size(){
   layer_size[0]= col_matrix;
+  printf("layer_size[o] :%d\n",layer_size[0] );
   for (int i = 1; i <NB_LAYOUT-1; ++i){
     layer_size[i]=SIZE_HD;
+    printf("layer_size[o] :%d\n",layer_size[i] );
+
   }
   layer_size[NB_LAYOUT-1]=NB_ERROR;
+  printf("layer_size[o] :%d\n",layer_size[NB_LAYOUT-1] );
 }
 
 
+
+void ajustError(LAYER * layer){
+    int i;
+    double sum = 0.0;
+    for (i = 0; i < layer->nbnode; i++){ 
+        sum += layer->value[i];
+    }
+
+    for (i = 0; i < layer->nbnode; i++){ 
+        layer->value[i] /= sum;
+    }
+}
+
 int main(int argc, char** argv)
 {   
-
+    double start = getCurrentTimestamp();
     double* matrix = preprocessing();
 
     col_matrix = get_col_matrix();
     raw_matrix = get_raw_matrix();
+    printf("col_matrix : %d\n", col_matrix );
+    printf("raw_matrix : %d\n", raw_matrix );
+
     int* out_process = get_output();
     init_layer_size();
     double* out;
 
 
-    double learn=0.03;
+    double learn=0.1;
     double* tab_result;
     LAYER* tab_layer[NB_LAYOUT];
     for (int i = 0; i < NB_LAYOUT; ++i)
@@ -438,22 +439,30 @@ int main(int argc, char** argv)
       printf("Layer %d initialized\n",i );
 
     }
+    int j=0;
     printf("End init Layer for processing\n");
-    for(int i=0; i<10;i++){
+    for(int i=0; i<raw_matrix;i++){
       out = choose_output(out_process,i);
       //printf("Begin of learn\n");
       init_layer(tab_layer[0], matrix, i,0);
       double error = 10.0;
       // printf("Learn Start\n");
-      rnnlearnstart(tab_layer);
+      while(error > 0.05 && j<1000){
+        rnnlearnstart(tab_layer);
         // printf("Learn set start\n");
-      rnnsetstart(tab_layer);
+        rnnsetstart(tab_layer);
         // printf("Learn set \n");
-      rnnset(tab_layer);
+        rnnset(tab_layer);
         // printf("Learn\n");
-      rnnlearn(tab_layer,out,learn);
-     
-      error = geterror(tab_layer[NB_LAYOUT-1]);
+        rnnlearn(tab_layer,out,learn);
+
+        error = geterror(tab_layer[NB_LAYOUT-1]);
+        j++;
+      }
+      printf("%d\n",j );
+      j=0;
+
+      ajustError(tab_layer[NB_LAYOUT-1]);
 
       if (DEBUG)
         printf("Error %f\n", error);
@@ -462,10 +471,16 @@ int main(int argc, char** argv)
 
       if (DEBUG)
         show_result(tab_result, layer_size[NB_LAYOUT-1]);
+
+      free_layer(tab_layer[0]);
+      free(out);
+      free(tab_result);
     }
-
-
-    return 1;
+    printf("Finish learning\n");
+    double end = getCurrentTimestamp() ;
+    printf("Temps mis a l'éxécutionn : %fd\n", end-start );
+    
+    return 0;
 }
 
 
