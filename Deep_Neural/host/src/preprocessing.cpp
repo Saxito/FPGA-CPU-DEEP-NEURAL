@@ -12,15 +12,18 @@ const char* file_name = "/home/guillaume/Documents/stage/Multiplication_Maxtrix/
 char** tab_protocol;
 char** tab_flag;
 char** tab_service;
+char** tab_out;
 int lenght_protocol;
 int lenght_service;
 int lenght_flag;
+int lenght_out;
 
 
 int raw,col;
 int nb_col_matrix;
 int nb_raw_matrix;
 double* matrix;
+int* out;
 
 char* getfield(char* line, int num)
 {
@@ -67,11 +70,15 @@ void reading_file(){
   tab_service= (char**)malloc(sizeof(char*)*SIZE_PRE_PROC);    
   for (int i = 0; i < SIZE_PRE_PROC; i++)
         tab_service[i] = (char*)malloc(SIZE_PRE_PROC * sizeof(char));
+  tab_out= (char**)malloc(sizeof(char*)*NB_ERROR);    
+  for (int i = 0; i < NB_ERROR; i++)
+        tab_out[i] = (char*)malloc(100 * sizeof(char));
 
   //Preprocessing on protocol;
   lenght_protocol = 0;
   lenght_flag = 0;
   lenght_service = 0;
+  lenght_out = 0;
   char* element;
   FILE* stream = fopen(file_name, "r");
   
@@ -106,6 +113,13 @@ void reading_file(){
         lenght_flag++;
       }
 
+      tmp = strdup(line);
+      element = getfield(tmp, 42);
+      if(!is_present(element,tab_out,lenght_out)){
+        strcpy(tab_out[lenght_out],element);
+        lenght_out++;
+      }
+
       free(tmp);
       nb_raw_matrix++;
   }
@@ -118,6 +132,8 @@ void reading_file(){
     printf("%d\n", lenght_service);
     show_tab(tab_flag,lenght_flag);
     printf("%d\n", lenght_flag );
+    show_tab(tab_out, lenght_out);
+    printf("%d\n", lenght_out );
   }
 
 }
@@ -164,8 +180,11 @@ void make_vector(int i, char* element){
       col++;
 
     }
+  }
+  else if(i==41){
+    fill_output(element, raw);
   }else{
-    matrix[raw*nb_col_matrix+col] = atof(element);
+    matrix[raw*nb_col_matrix+col] = tanh(atof(element));
     col++;
 
   }
@@ -173,6 +192,8 @@ void make_vector(int i, char* element){
 
 void make_matrix(){
   matrix =(double*)malloc(sizeof(double)*nb_col_matrix*nb_raw_matrix);
+  out=(int*)malloc(sizeof(int)*nb_raw_matrix);
+
   FILE* stream = fopen(file_name, "r");
   char* element;
   
@@ -186,7 +207,7 @@ void make_matrix(){
   raw = 0;
   while (fgets(line, 1024, stream)){
     col= 0;
-    for(int i=0; i < NB_COL_NSL; i++){
+    for(int i=0; i < NB_COL_NSL+1; i++){
       tmp = strdup(line);
       element = getfield(tmp,i+1);
       make_vector(i, element);
@@ -207,5 +228,27 @@ double* preprocessing(){
   make_matrix();
   printf("Matrix created\n");
   return matrix;
-  
 }
+
+void fill_output(char* element, int k){
+  for (int i = 0; i < lenght_out; ++i)
+  {
+    if(!strcmp(element,tab_out[i])){
+      out[k]=i;
+    }
+  }
+}
+
+int* get_output(){
+  return out;
+
+}
+
+int get_col_matrix(){
+  return nb_col_matrix;
+}
+
+int get_raw_matrix(){
+  return nb_raw_matrix;
+}
+
