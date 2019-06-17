@@ -5,8 +5,9 @@
 #include "preprocessing.h"
 
 #define DEBUG 0
- 
-const char* file_name = "/home/guillaume/Documents/stage/Multiplication_Maxtrix/Deep_Neural/data/KDDTrain+.txt";
+
+
+const char* resul_name = "/home/guillaume/Documents/stage/Multiplication_Maxtrix/Deep_Neural/data/result.txt";
 
 
 char** tab_protocol;
@@ -18,12 +19,17 @@ int lenght_service;
 int lenght_flag;
 int lenght_out;
 
+const char* Dos[11] = {"back", "land", "neptune", "pod,smurf", "teardrop", "mailbomb", "processtable", "udpstorm", "apache2", "worm"};
+const char* R2L[14] = {"fpt-write", "guess-passwd","imap", "multihop", "phf", "spy", "warezmaster", "xlock", "xsnoop", "snmpguess", "snmpgetattack", "httptunnel", "sendmail", "named"};
+const char* U2R[7] = {"buffer-overflow", "loadmodule", "perl", "rootkit", "sqlattack", "xterm", "ps"};
+const char* Probe[6] = {"ipsweep", "nmap", "portsweep","satan", "mscan", "saint"};
 
 int raw,col;
 int nb_col_matrix;
 int nb_raw_matrix;
 double* matrix;
 int* out;
+int* out_compt;
 
 char* getfield(char* line, int num)
 {
@@ -38,14 +44,18 @@ char* getfield(char* line, int num)
     return NULL;
 }
 
-int is_present(char* element, char** tab, int n){
+int is_present(char* element, char** tab, int n, int compte){
   for(int i=0; i<n; i++){
     if(strlen(element)==strlen(tab[i])){
       if(!memcmp(element,tab[i],strlen(element))){
+        if(compte)
+          out_compt[i]++;
         return 1;
       }
     }
   }
+  if(compte)
+    out_compt[n]++;
   return 0;
 }
 
@@ -60,7 +70,7 @@ void show_tab(char ** tab, int n){
   printf("]\n");
 }
 
-void reading_file(){
+void reading_file(const char* file){
   tab_protocol = (char**)malloc(sizeof(char*)*SIZE_PRE_PROC);
   for (int i = 0; i < SIZE_PRE_PROC; i++)
         tab_protocol[i] = (char*)malloc(SIZE_PRE_PROC * sizeof(char));
@@ -70,9 +80,12 @@ void reading_file(){
   tab_service= (char**)malloc(sizeof(char*)*SIZE_PRE_PROC);    
   for (int i = 0; i < SIZE_PRE_PROC; i++)
         tab_service[i] = (char*)malloc(SIZE_PRE_PROC * sizeof(char));
-  tab_out= (char**)malloc(sizeof(char*)*NB_ERROR);    
-  for (int i = 0; i < NB_ERROR; i++)
+  tab_out= (char**)malloc(sizeof(char*)*NB_ERROR_MAX);    
+  for (int i = 0; i < NB_ERROR_MAX; i++)
         tab_out[i] = (char*)malloc(100 * sizeof(char));
+  out_compt = (int*)malloc(sizeof(int*)*NB_ERROR_MAX);    
+  for (int i = 0; i < NB_ERROR_MAX; i++)
+        out_compt[i] = 0;
 
   //Preprocessing on protocol;
   lenght_protocol = 0;
@@ -80,42 +93,43 @@ void reading_file(){
   lenght_service = 0;
   lenght_out = 0;
   char* element;
-  FILE* stream = fopen(file_name, "r");
+ 
+  FILE* stream = fopen(file, "r");
   
   if(stream == NULL){
     printf("Failed to open File\n");
     return;
   }
+
   nb_raw_matrix=0;
   char line[1024];
   while (fgets(line, 1024, stream))
   {   
-
       char* tmp = strdup(line);
 
       element = getfield(tmp, 2);
-      if(!is_present(element,tab_protocol,lenght_protocol)){
+      if(!is_present(element,tab_protocol,lenght_protocol,0)){
         strcpy(tab_protocol[lenght_protocol],element);
         lenght_protocol++;
       }
 
       tmp = strdup(line);
       element = getfield(tmp, 3);
-      if(!is_present(element,tab_service,lenght_service)){
+      if(!is_present(element,tab_service,lenght_service,0)){
         strcpy(tab_service[lenght_service],element);
         lenght_service++;
       }
 
       tmp = strdup(line);
       element = getfield(tmp, 4);
-      if(!is_present(element,tab_flag,lenght_flag)){
+      if(!is_present(element,tab_flag,lenght_flag,0)){
         strcpy(tab_flag[lenght_flag],element);
         lenght_flag++;
       }
 
       tmp = strdup(line);
       element = getfield(tmp, 42);
-      if(!is_present(element,tab_out,lenght_out)){
+      if(!is_present(element,tab_out,lenght_out,1)){
         strcpy(tab_out[lenght_out],element);
         lenght_out++;
       }
@@ -124,7 +138,9 @@ void reading_file(){
       nb_raw_matrix++;
   }
   fclose(stream);
+  printf("end reading \n");
   nb_col_matrix = NB_COL_NSL+lenght_protocol+lenght_flag+lenght_service-3;
+
   if(DEBUG){
     show_tab(tab_protocol,lenght_protocol);
     printf("%d\n", lenght_protocol);
@@ -190,11 +206,11 @@ void make_vector(int i, char* element){
   }
 }
 
-void make_matrix(){
+void make_matrix(const char* file){
   matrix =(double*)malloc(sizeof(double)*nb_col_matrix*nb_raw_matrix);
   out=(int*)malloc(sizeof(int)*nb_raw_matrix);
 
-  FILE* stream = fopen(file_name, "r");
+  FILE* stream = fopen(file, "r");
   char* element;
   
   if(stream == NULL){
@@ -220,14 +236,30 @@ void make_matrix(){
     show_matrix();
 }
 
-double* preprocessing(){
+double* preprocessing(const char* file){
   printf("Preprocessing in charge\n");
   printf("Reading file\n");
-  reading_file();
+  reading_file(file);
   printf("Creation of matrix for Input Layer\n");
-  make_matrix();
+  make_matrix(file);
   printf("Matrix created\n");
   return matrix;
+}
+
+void postprocessing(int* out){
+  FILE *stream = fopen(resul_name, "w");
+  fprintf(stream, "Nom de l'attaque;nombre dans le fichier;nombre trouvé;différence;precision\n");
+  for (int i = 0; i < lenght_out; ++i)
+  {
+    fputs(tab_out[i],stream);
+    fprintf(stream, " %d   ",out_compt[i] );
+    fprintf(stream, " %d   ",out[i] );
+    fprintf(stream, " %d   ",out_compt[i]-out[i]);
+    fprintf(stream, " %f   \n",1.0-(double)((double)out_compt[i]-(double)out[i])/(double)out_compt[i]);
+    printf(" %f   \n",1.0-(double)((double)out_compt[i]-(double)out[i])/(double)out_compt[i]);
+
+  }
+  fclose(stream);
 }
 
 void fill_output(char* element, int k){
@@ -251,4 +283,9 @@ int get_col_matrix(){
 int get_raw_matrix(){
   return nb_raw_matrix;
 }
+
+int get_nberror(){
+  return lenght_out;
+}
+
 

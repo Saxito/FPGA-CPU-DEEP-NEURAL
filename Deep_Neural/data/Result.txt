@@ -1,0 +1,24 @@
+Nom de l'attaque;nombre dans le fichier;nombre trouvÃ©;diffÃ©rence;precision
+normal 67343    75697    -8354    1.124051   
+neptune 41214    39783    1431    0.965279   
+warezclient 890    472    418    0.530337   
+ipsweep 3599    2307    1292    0.641011   
+portsweep 2931    1860    1071    0.634596   
+teardrop 892    450    442    0.504484   
+nmap 1493    523    970    0.350301   
+satan 3633    2413    1220    0.664189   
+smurf 2646    1892    754    0.715042   
+pod 201    40    161    0.199005   
+back 956    533    423    0.557531   
+guess_passwd 53    1    52    0.018868   
+ftp_write 8    0    8    0.000000   
+multihop 7    1    6    0.142857   
+rootkit 10    0    10    0.000000   
+buffer_overflow 30    1    29    0.033333   
+imap 11    0    11    0.000000   
+warezmaster 20    0    20    0.000000   
+phf 4    0    4    0.000000   
+land 18    0    18    0.000000   
+loadmodule 9    0    9    0.000000   
+spy 2    0    2    0.000000   
+perl 3    0    3    0.000000   

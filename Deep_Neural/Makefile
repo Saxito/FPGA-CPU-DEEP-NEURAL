@@ -1,4 +1,4 @@
-TARGET := hello
+TARGET := rnnkdd
 
 # Where is the Altera SDK for OpenCL software?
 ifeq ($(wildcard $(ALTERAOCLSDKROOT)),)
