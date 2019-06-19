@@ -234,6 +234,11 @@ void make_matrix(const char* file){
   }
   if(DEBUG)
     show_matrix();
+
+  free(tab_protocol);
+  free(tab_flag);
+  free(tab_service);
+
 }
 
 double* preprocessing(const char* file){
@@ -251,13 +256,13 @@ void postprocessing(int* out){
   fprintf(stream, "Nom de l'attaque;nombre dans le fichier;nombre trouvé;différence;precision\n");
   for (int i = 0; i < lenght_out; ++i)
   {
+    
     fputs(tab_out[i],stream);
     fprintf(stream, " %d   ",out_compt[i] );
     fprintf(stream, " %d   ",out[i] );
     fprintf(stream, " %d   ",out_compt[i]-out[i]);
     fprintf(stream, " %f   \n",1.0-(double)((double)out_compt[i]-(double)out[i])/(double)out_compt[i]);
     printf(" %f   \n",1.0-(double)((double)out_compt[i]-(double)out[i])/(double)out_compt[i]);
-
   }
   fclose(stream);
 }

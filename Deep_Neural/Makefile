@@ -30,7 +30,7 @@ AOCL_COMPILE_CONFIG := $(shell aocl compile-config)
 #AOCL_LINK_CONFIG := $(shell aocl link-config)
 AOCL_LINK_CONFIG := -L/home/guillaume/altera/16.0/hld/host/linux64/lib -Wl,--no-as-needed -lalteracl -lstdc++ -lelf
 
-CXXFLAGS += -O2 -D__USE_XOPEN2K8
+CXXFLAGS += -O2 -D__USE_XOPEN2K8 -fopenmp -O3
 CXXFLAGS += -Wall -I$AALSDK/include -I/usr/local/include -DHAVE_CONFIG_H -DTESTB -g -L/opt/aalsdk/lib  -L/usr/local/lib 
 
 # Make it all!
@@ -47,7 +47,7 @@ $(TARGET_DIR)/$(TARGET) : Makefile $(SRCS) $(INC_FILES)
 
 # TODO: improve this entry to be better
 emukernel:
-	aoc -march=emulator -g -v device/hello_world.cl -o bin/hello_world.aocx --board de10_standard_sharedonly
+	aoc -march=emulator -g -v device/calcul.cl -o bin/calcul.aocx --board de10_standard_sharedonly
 
 kernel: emukernel
 
