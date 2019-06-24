@@ -10,10 +10,13 @@ void vector_multiplication(double* wchange, double* value, int col, int raw);
 void change_matrix(double* matrix, double* change, int ligne, int colonne);
 void normalisation(double* a, int intervalle, int taille);
 void vector_multiplication_carre(double* value, double* derivative, int taille);
+void change_weight_CPU(double * weight, double* biais, double* error_next, double* value_next, double leanintegrate, int raw, int col, int isoutput);
+
 
 //Fonction Kernel
 bool init();
 void devices_info();
+void soustraction_vector_kernel(double* a, double* b, double* c, int n);
 void compute_matrix_sig_kernel(double* a, double* b ,double* c, double* d, int n, int m);
-void change_weight_kernel();
+void change_weight_kernel(double * weight, double* biais, double* error_next, double* value_next, double leanintegrate, int raw, int col, int isoutput);
 

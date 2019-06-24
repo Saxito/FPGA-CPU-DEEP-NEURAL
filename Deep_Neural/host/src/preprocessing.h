@@ -6,7 +6,7 @@
 
 
 	#define SIZE_PRE_PROC 100
-	#define NB_ERROR_MAX 50
+	#define NB_ERROR_MAX 5
 	#define NB_COL_NSL 41
 
 

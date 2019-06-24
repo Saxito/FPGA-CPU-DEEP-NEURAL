@@ -19,10 +19,14 @@ int lenght_service;
 int lenght_flag;
 int lenght_out;
 
-const char* Dos[11] = {"back", "land", "neptune", "pod,smurf", "teardrop", "mailbomb", "processtable", "udpstorm", "apache2", "worm"};
-const char* R2L[14] = {"fpt-write", "guess-passwd","imap", "multihop", "phf", "spy", "warezmaster", "xlock", "xsnoop", "snmpguess", "snmpgetattack", "httptunnel", "sendmail", "named"};
-const char* U2R[7] = {"buffer-overflow", "loadmodule", "perl", "rootkit", "sqlattack", "xterm", "ps"};
+const char* Dos[11] = {"back", "land", "neptune", "pod","smurf", "teardrop", "mailbomb", "processtable", "udpstorm", "apache2", "worm"};
+const char* R2L[15] = {"warezclient","ftp_write", "guess_passwd","imap", "multihop", "phf", "spy", "warezmaster", "xlock", "xsnoop", "snmpguess", 
+                      "snmpgetattack", "httptunnel", "sendmail", "named"};
+const char* U2R[7] = {"buffer_overflow", "loadmodule", "perl", "rootkit", "sqlattack", "xterm", "ps"};
 const char* Probe[6] = {"ipsweep", "nmap", "portsweep","satan", "mscan", "saint"};
+const char* Normal[1] = {"normal"};
+
+const char* Name_ERROR[5]= {"Normal","Probe","U2R","Dos","R2L"};
 
 int raw,col;
 int nb_col_matrix;
@@ -44,18 +48,14 @@ char* getfield(char* line, int num)
     return NULL;
 }
 
-int is_present(char* element, char** tab, int n, int compte){
+int is_present(char* element, char** tab, int n){
   for(int i=0; i<n; i++){
     if(strlen(element)==strlen(tab[i])){
       if(!memcmp(element,tab[i],strlen(element))){
-        if(compte)
-          out_compt[i]++;
         return 1;
       }
     }
   }
-  if(compte)
-    out_compt[n]++;
   return 0;
 }
 
@@ -72,18 +72,23 @@ void show_tab(char ** tab, int n){
 
 void reading_file(const char* file){
   tab_protocol = (char**)malloc(sizeof(char*)*SIZE_PRE_PROC);
+  #pragma omp for
   for (int i = 0; i < SIZE_PRE_PROC; i++)
         tab_protocol[i] = (char*)malloc(SIZE_PRE_PROC * sizeof(char));
   tab_flag = (char**)malloc(sizeof(char*)*SIZE_PRE_PROC);
+  #pragma omp for
   for (int i = 0; i < SIZE_PRE_PROC; i++)
         tab_flag[i] = (char*)malloc(SIZE_PRE_PROC * sizeof(char));
   tab_service= (char**)malloc(sizeof(char*)*SIZE_PRE_PROC);    
+  #pragma omp for
   for (int i = 0; i < SIZE_PRE_PROC; i++)
         tab_service[i] = (char*)malloc(SIZE_PRE_PROC * sizeof(char));
-  tab_out= (char**)malloc(sizeof(char*)*NB_ERROR_MAX);    
-  for (int i = 0; i < NB_ERROR_MAX; i++)
+  tab_out= (char**)malloc(sizeof(char*)*50);    
+  #pragma omp for
+  for (int i = 0; i < 50; i++)
         tab_out[i] = (char*)malloc(100 * sizeof(char));
   out_compt = (int*)malloc(sizeof(int*)*NB_ERROR_MAX);    
+  #pragma omp for
   for (int i = 0; i < NB_ERROR_MAX; i++)
         out_compt[i] = 0;
 
@@ -108,28 +113,28 @@ void reading_file(const char* file){
       char* tmp = strdup(line);
 
       element = getfield(tmp, 2);
-      if(!is_present(element,tab_protocol,lenght_protocol,0)){
+      if(!is_present(element,tab_protocol,lenght_protocol)){
         strcpy(tab_protocol[lenght_protocol],element);
         lenght_protocol++;
       }
 
       tmp = strdup(line);
       element = getfield(tmp, 3);
-      if(!is_present(element,tab_service,lenght_service,0)){
+      if(!is_present(element,tab_service,lenght_service)){
         strcpy(tab_service[lenght_service],element);
         lenght_service++;
       }
 
       tmp = strdup(line);
       element = getfield(tmp, 4);
-      if(!is_present(element,tab_flag,lenght_flag,0)){
+      if(!is_present(element,tab_flag,lenght_flag)){
         strcpy(tab_flag[lenght_flag],element);
         lenght_flag++;
       }
 
       tmp = strdup(line);
       element = getfield(tmp, 42);
-      if(!is_present(element,tab_out,lenght_out,1)){
+      if(!is_present(element,tab_out,lenght_out)){
         strcpy(tab_out[lenght_out],element);
         lenght_out++;
       }
@@ -254,10 +259,10 @@ double* preprocessing(const char* file){
 void postprocessing(int* out){
   FILE *stream = fopen(resul_name, "w");
   fprintf(stream, "Nom de l'attaque;nombre dans le fichier;nombre trouvé;différence;precision\n");
-  for (int i = 0; i < lenght_out; ++i)
+  for (int i = 0; i < NB_ERROR_MAX; ++i)
   {
     
-    fputs(tab_out[i],stream);
+    fputs(Name_ERROR[i],stream);
     fprintf(stream, " %d   ",out_compt[i] );
     fprintf(stream, " %d   ",out[i] );
     fprintf(stream, " %d   ",out_compt[i]-out[i]);
@@ -268,17 +273,44 @@ void postprocessing(int* out){
 }
 
 void fill_output(char* element, int k){
-  for (int i = 0; i < lenght_out; ++i)
+  for (int i = 0; i < 15; ++i)
   {
-    if(!strcmp(element,tab_out[i])){
-      out[k]=i;
-    }
+    if(i<1){
+      if(!strcmp(element,Normal[i])){
+        out[k]= 0;
+        out_compt[0]++;
+      }
+    } 
+    if(i<6){
+      if(!strcmp(element,Probe[i])){
+        out[k]= 1;
+        out_compt[1]++;
+      }
+    } 
+    if(i<7){
+      if(!strcmp(element,U2R[i])){
+        out[k]= 2;
+        out_compt[2]++;
+      }
+    } 
+    if(i<11){
+      if(!strcmp(element,Dos[i])){
+        out[k]= 3;
+        out_compt[3]++;
+      }
+    } 
+    if(i<15){
+      if(!strcmp(element,R2L[i])){
+        out[k]= 4;
+        out_compt[4]++;
+      }
+    } 
   }
+
 }
 
 int* get_output(){
   return out;
-
 }
 
 int get_col_matrix(){
@@ -290,7 +322,7 @@ int get_raw_matrix(){
 }
 
 int get_nberror(){
-  return lenght_out;
+  return NB_ERROR_MAX;
 }
 
 
