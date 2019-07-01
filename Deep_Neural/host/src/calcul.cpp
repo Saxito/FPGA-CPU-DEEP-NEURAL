@@ -1,5 +1,6 @@
 #include "calcul.h"
 #include <cstring>
+#include "CL/opencl.h"
 #include "AOCLUtils/aocl_utils.h"
 
 
@@ -11,8 +12,8 @@ static cl_context context = NULL;
 static cl_command_queue queue = NULL;
 static cl_program program = NULL;
 static int status;
-//kernel
 
+//kernel
 static cl_kernel matrix_sig = NULL;
 static cl_kernel change_weight = NULL;
 static cl_kernel soustraction = NULL;
@@ -172,7 +173,6 @@ void compute_matrix_kernel(double* a, double* b, double *c, int n, int m){
 	{
 		null[i]= 0.0;
 	}
-
 	// create buffer;
 
 	cl_mem ABuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
@@ -237,10 +237,11 @@ void change_weight_CPU(double * weight, double* biais, double* error_next, doubl
 						int raw, int col, int isoutput){
 
 	int i,j;
+  	//#pragma omp for
 	for (j = 0; j < col; ++j)
 	{	
 		double tmp= 0.0;
-  		
+
 		for (i = 0; i < raw; ++i)
 		{
 			tmp = error_next[j]*leanintegrate;

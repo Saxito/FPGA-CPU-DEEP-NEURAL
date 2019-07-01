@@ -40,3 +40,4 @@ void show_result(double* a, int size){
     printf("result [%d]: %f\n", i,a[i]);
   }
 }
+

@@ -49,7 +49,9 @@ $(TARGET_DIR)/$(TARGET) : Makefile $(SRCS) $(INC_FILES)
 emukernel:
 	aoc -march=emulator -g -v device/calcul.cl -o bin/calcul.aocx --board de10_standard_sharedonly
 
-kernel: emukernel
+kernel: 
+	aoc -g -v device/calcul.cl -o bin/calcul.aocx --board de10_standard_sharedonly
+
 
 # Standard make targets
 clean :

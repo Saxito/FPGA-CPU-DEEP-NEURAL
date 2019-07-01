@@ -1,16 +1,12 @@
 #ifndef PRE_H
 #define PRE_H 
 
-	#include "CL/opencl.h"
-	#include "AOCLUtils/aocl_utils.h"
-
-
 	#define SIZE_PRE_PROC 100
 	#define NB_ERROR_MAX 5
 	#define NB_COL_NSL 41
 
 
-	double* preprocessing(const char *);
+	float* preprocessing(const char *);
 	void make_matrix(const char*);
 	void make_vector(int i, char* element);
 	void show_matrix();

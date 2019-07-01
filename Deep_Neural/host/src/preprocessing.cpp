@@ -7,7 +7,7 @@
 #define DEBUG 0
 
 
-const char* resul_name = "/home/guillaume/Documents/stage/Multiplication_Maxtrix/Deep_Neural/data/result.txt";
+const char* resul_name = "./data/result.txt";
 
 
 char** tab_protocol;
@@ -31,7 +31,7 @@ const char* Name_ERROR[5]= {"Normal","Probe","U2R","Dos","R2L"};
 int raw,col;
 int nb_col_matrix;
 int nb_raw_matrix;
-double* matrix;
+float* matrix;
 int* out;
 int* out_compt;
 
@@ -97,7 +97,6 @@ void reading_file(const char* file){
   lenght_flag = 0;
   lenght_service = 0;
   lenght_out = 0;
-  char* element;
  
   FILE* stream = fopen(file, "r");
   
@@ -108,9 +107,12 @@ void reading_file(const char* file){
 
   nb_raw_matrix=0;
   char line[1024];
+  char* element;
+
   while (fgets(line, 1024, stream))
   {   
       char* tmp = strdup(line);
+
 
       element = getfield(tmp, 2);
       if(!is_present(element,tab_protocol,lenght_protocol)){
@@ -142,6 +144,7 @@ void reading_file(const char* file){
       free(tmp);
       nb_raw_matrix++;
   }
+
   fclose(stream);
   printf("end reading \n");
   nb_col_matrix = NB_COL_NSL+lenght_protocol+lenght_flag+lenght_service-3;
@@ -205,14 +208,14 @@ void make_vector(int i, char* element){
   else if(i==41){
     fill_output(element, raw);
   }else{
-    matrix[raw*nb_col_matrix+col] = tanh(atof(element));
+    matrix[raw*nb_col_matrix+col] = (float)tanh(atof(element));
     col++;
 
   }
 }
 
 void make_matrix(const char* file){
-  matrix =(double*)malloc(sizeof(double)*nb_col_matrix*nb_raw_matrix);
+  matrix =(float*)malloc(sizeof(float)*nb_col_matrix*nb_raw_matrix);
   out=(int*)malloc(sizeof(int)*nb_raw_matrix);
 
   FILE* stream = fopen(file, "r");
@@ -224,17 +227,15 @@ void make_matrix(const char* file){
   }
 
   char line[1024];
-  char* tmp;
   raw = 0;
   while (fgets(line, 1024, stream)){
     col= 0;
     for(int i=0; i < NB_COL_NSL+1; i++){
-      tmp = strdup(line);
+      char * tmp = strdup(line);
       element = getfield(tmp,i+1);
       make_vector(i, element);
-
+      free(tmp);
     }
-    free(tmp);
     raw++;
   }
   if(DEBUG)
@@ -243,10 +244,11 @@ void make_matrix(const char* file){
   free(tab_protocol);
   free(tab_flag);
   free(tab_service);
+  fclose(stream);
 
 }
 
-double* preprocessing(const char* file){
+float* preprocessing(const char* file){
   printf("Preprocessing in charge\n");
   printf("Reading file\n");
   reading_file(file);
