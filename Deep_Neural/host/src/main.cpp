@@ -1,6 +1,5 @@
 #include "rnn.h"
 #include "lstm.h"
-#include "calcul.h"
 #include <stdio.h>
 #include <cstring>
 
@@ -15,8 +14,8 @@ int main(int argc, char** argv)
 			lstm_train(file_name_learn);
 			lstm_test(file_name_test);
 		}else if(!strcmp(argv[1], "-rnn")){
-			learn_KDD(file_name_learn);
-			test_KDD(file_name_test);
+			learn_KDD(file_name_learn, file_name_test);
+			//test_KDD(file_name_test);
 		}else{
 			printf("Choissisez un moyen de calcul : -lstm pour choisir lstm -rnn pour le mode normal \n");
 		}

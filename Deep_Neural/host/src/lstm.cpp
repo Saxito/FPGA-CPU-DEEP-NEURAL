@@ -1,6 +1,5 @@
 #include "preprocessing.h"
 #include "utils.h"
-#include "calcul.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,6 +55,7 @@ int jmax=0;
 
 
 int layer_size_lstm[NB_LAYOUT_LSTM+1];
+
 
 void init_layer_size_lstm(int col_matrix, int nb_error){
 	layer_size_lstm[0]= col_matrix;

@@ -14,7 +14,9 @@ double* choose_output(int* output_process, int i){
     }else{
       res[k]=0.0;
     }
+    printf("%f ",res[k]);
   }
+  printf("\n");
   return res;
 }
 
@@ -39,5 +41,11 @@ void show_result(double* a, int size){
   {
     printf("result [%d]: %f\n", i,a[i]);
   }
+}
+
+
+double sigmoid(double a){
+  double res= 1 / (1 + exp(-a));
+  return res;
 }
 
