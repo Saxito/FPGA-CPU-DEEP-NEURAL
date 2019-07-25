@@ -29,6 +29,7 @@ int col_matrix;
 int raw_matrix;
 int nb_error;
 double average_sure =0.0;
+double overload = 0.0;
 
 struct _layer {
 	int typeLayer;
@@ -122,7 +123,9 @@ void compute_matrix_sig(double* a, double* b ,double* c, double* d, int n, int m
 void compute_matrix_sig_kernel(double* a, cl_mem ABuffer, double* b , cl_mem BBuffer , double* c, cl_mem CBuffer, double* d, cl_mem DBuffer,
 	int n, int m){
 	//multiplication
+	double start, end;
 
+	start = getCurrentTimestamp();
 	//write buffer
 	status  = clEnqueueWriteBuffer(queue, CBuffer, CL_FALSE,
 		0, sizeof(double)*m, c, 0, NULL, NULL);
@@ -158,6 +161,8 @@ void compute_matrix_sig_kernel(double* a, cl_mem ABuffer, double* b , cl_mem BBu
 	checkError(status, "Failed to set kernel arg 2");
 	status |= clFinish(queue);
 
+	end = getCurrentTimestamp;
+	overload += end-start;
 	//lauch queue
 	size_t global_size[2]={(size_t)m,(size_t)m};
 
@@ -168,8 +173,13 @@ void compute_matrix_sig_kernel(double* a, cl_mem ABuffer, double* b , cl_mem BBu
 	status |= clFinish(queue);
 
    	//sigmoide
+	start = getCurrentTimestamp();
+
 	status  = clEnqueueReadBuffer(queue, CBuffer, CL_TRUE,
 		0, sizeof(double) * m , c  , 0, NULL, NULL);
+
+	end = getCurrentTimestamp();
+	overload += end-start;
 
 	//cleanup();
 }
@@ -748,6 +758,7 @@ bool init() {
  	printf("Finish Testing look into result.csv for result\n");
  	end = getCurrentTimestamp() ;
  	printf("Time to execute for Testing : %fd\n", end-start );
+ 	printf("overload FPGA = %f\n", overload);
  	postprocessing(out_compt);
 
  	free(out_compt);
