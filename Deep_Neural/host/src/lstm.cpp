@@ -241,12 +241,16 @@ void lstm_start(){
 
 void foward_cbar(LSTM_LAYER* l){
 	// cbar = tanh(Wcbar * value_x + Ua * value_prev o + Biaiscbar);
+	//printf("%d, %d \n", l->nbnode_next, l->nbnode);
 	for (int i = 0; i < l->nbnode_next; ++i)
 	{	
+
 		double tmp =0.0;
 		for (int j = 0; j < l->nbnode; ++j)
 		{	
+
 			tmp+=(l->value_prev_o[i]+l->value_x[j])*l->weight_cbar[j*l->nbnode_next+i];
+			//printf("tmp %f\n",tmp );
 		}
 		l->value_cbar[i]=tanh(tmp+l->biais_cbar[i]);
 	}
@@ -322,7 +326,7 @@ void foward_output(LSTM_LAYER* l){
 	//outpout = tanh(valuec)* o
 	for (int i = 0; i < l->nbnode_next; ++i)
 	{
-		l->value_out[i]= sigmoid(l->value_c[i])* l->value_o[i];
+		l->value_out[i]= tanh(l->value_c[i])* l->value_o[i];
 			// printf(" value[o]: %f\n", l->value_o[i]);
 			// printf("sig c %f \n", sigmoid(l->value_c[i]));
 			// printf("out %f \n", l->value_out[i]);
@@ -351,11 +355,17 @@ void fill_value(LSTM_LAYER* l_prev, LSTM_LAYER* l){
 void lstm_foward(){
 	for (int i = 0; i < NB_LAYOUT_LSTM; ++i)
 	{
+		// printf("quelque chose\n");
 		foward_cbar(layers[i]);
+		// printf("i\n");
 		foward_i(layers[i]);
+		// printf("i\n");
 		foward_f(layers[i]);
+		// printf("i\n");
 		foward_o(layers[i]);
+		// printf("i\n");
 		foward_state(layers[i]);
+		// printf("i\n");
 		foward_output(layers[i]);
 		if(i<NB_LAYOUT_LSTM-1){
 			fill_value(layers[i],layers[i+1]);
@@ -383,7 +393,7 @@ double* calcul_error(double* out, LSTM_LAYER* l, LSTM_LAYER* l_next){
 			l->error[i]+=l_next->value_prev_x[i];
 		}
 		res[i]= l->error[i];
-		//printf("error[%d] = %f\n",i, res[i] );
+		printf("error[%d] = %f\n",i, res[i] );
 
 	}
 	return res;
@@ -446,7 +456,7 @@ double* cdelta_o(LSTM_LAYER* l, double* error){
 	double* res = (double*)malloc(sizeof(double)*l->nbnode_next);
 	for (int i = 0; i < l->nbnode_next ; ++i)
 	{
-		res[i] = error[i] * 0.3 ;//tanh(l->value_c[i]) * l->value_o[i] * (1-l->value_o[i]);
+		res[i] = error[i] * tanh(l->value_c[i]) * l->value_o[i] * (1-l->value_o[i]);
 		//res[i] = error[i] * tanh (l->value_c[i]);
 		// if(jmax==999){
 		// 	printf("deslta o[%d] = %f \n",i, res[i] );
@@ -587,11 +597,18 @@ void lstm_backfoward(double learn, double* out){
 	//ΔW = Δgate*x
 
 }
+void init_value_lstm(LSTM_LAYER* l, float* matrix, int index){
+	//printf("ls: %d\n", layer_size_lstm[0]);
+	for(int i=0; i<layer_size_lstm[0];i++){
+		l->value_x[i]=matrix[index*layer_size_lstm[0]+i];
+		//printf(" %f\n", l->value_x[i] );
+	}
+}
 
 void lstm_train(const char* file_name_learn){
 
 	double start = getCurrentTimestamp();
-	float * matrix = preprocessing(file_name_learn);
+	float * matrix = preprocessing(file_name_learn,0);
 	double pre = getCurrentTimestamp();
 	printf("Temps de preprocessing : %f\n", pre-start);
 	int col_matrix = get_col_matrix();
@@ -606,7 +623,7 @@ void lstm_train(const char* file_name_learn){
 
 	double* out;
 	double jtot=0.0;
-	double learn=1;
+	double learn=0.1;
 
 	init_layer_size_lstm(col_matrix,nb_error);
 	
@@ -614,24 +631,26 @@ void lstm_train(const char* file_name_learn){
 	{
 		layers[i] =(LSTM_LAYER*)malloc(sizeof(LSTM_LAYER));
 	}
-	for (int i = 1; i < NB_LAYOUT_LSTM; ++i)
+	for (int i = 0; i < NB_LAYOUT_LSTM; ++i)
 	{
 		init_LSTM_layer(layers[i],matrix,0,i);
 	}
 	int ok = raw_matrix;
-	for (int b = 0; b < 1; ++b)
-	{
-		for(int i=0; i<ok;i++){
+	for(int i=0; i<ok;i++){
 		printf("%d\n",i );
-
 		out = choose_output(out_process,i);
-		init_LSTM_layer(layers[0],matrix,i,0);
 		double error = 10.0;
 		lstm_start();
+		// printf("afterstart\n");
+		init_value_lstm(layers[0],matrix,i);
+		// printf("after init\n");
+
 
 		while(error > 0.05 && jmax<1000){
 			//lstm_start();
+			// printf("afterstart\n");
 			lstm_foward();
+			// printf("after foward\n");
 			ajustError_LSTM(layers[NB_LAYOUT_LSTM-1]);
 
 			//softmax(layers[NB_LAYOUT_LSTM-1]->value_out,5);
@@ -653,15 +672,14 @@ void lstm_train(const char* file_name_learn){
 			printf("Error %f\n", error);
 
 		double *tab_result = gettab_result(layers[NB_LAYOUT_LSTM-1]);
-		compte_resultat(tab_result, out_compt, layers[NB_LAYOUT_LSTM-1]->nbnode_next, &average_sure);
+		compte_resultat(tab_result, out_compt, out, layers[NB_LAYOUT_LSTM-1]->nbnode_next, &average_sure);
 
 		if (DEBUG)
 			show_result(tab_result, nb_error);
 
-		free_LSTM_layer(layers[0]);
+		//free_LSTM_layer(layers[0]);
 		free(out);
 		free(tab_result);
-	}
 	}
 	
 	printf("Finish learning\n");
@@ -675,7 +693,7 @@ void lstm_train(const char* file_name_learn){
 void lstm_test(const char* file_name_test){
 
 	double start = getCurrentTimestamp();
-	float* matrix = preprocessing(file_name_test);
+	float* matrix = preprocessing(file_name_test,1);
 	int col_matrix = get_col_matrix();
 	int raw_matrix = get_raw_matrix();
 	int nb_error =get_nberror();
@@ -698,9 +716,9 @@ void lstm_test(const char* file_name_test){
 	printf("End init Layer for processing\n");
 	for(int i=0; i<raw_matrix;i++){
 		
-		init_LSTM_layer(layers[0],matrix,i,0);
 		
 		lstm_start();
+		init_value_lstm(layers[0],matrix,i);
 
 		out = choose_output(out_process,i);
         //printf("Begin of learn\n");
@@ -711,7 +729,7 @@ void lstm_test(const char* file_name_test){
 		//softmax(layers[NB_LAYOUT_LSTM-1]->value_out,5);
 
 			// printf("foward\n");
-		lstm_backfoward(learn, out);
+		//lstm_backfoward(learn, out);
 			// printf("lstm_backfoward\n");
 		error = geterror_LSTM(layers[NB_LAYOUT_LSTM-1]);
 			//show_result(layers[NB_LAYOUT_LSTM-1]->error, 5);
@@ -721,12 +739,12 @@ void lstm_test(const char* file_name_test){
 			printf("Error %f\n", error);
 
 		double *tab_result = gettab_result(layers[NB_LAYOUT_LSTM-1]);
-		compte_resultat(tab_result, out_compt, layers[NB_LAYOUT_LSTM-1]->nbnode_next, &average_sure);
+		compte_resultat(tab_result, out_compt, out, layers[NB_LAYOUT_LSTM-1]->nbnode_next, &average_sure);
 
 		if (DEBUG)
 			show_result(tab_result, nb_error);
 
-		free_LSTM_layer(layers[0]);
+		//free_LSTM_layer(layers[0]);
 		free(out);
 		free(tab_result);
 	}

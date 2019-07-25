@@ -53,22 +53,23 @@ struct _layer {
 
 
 
-double geterror(LAYER* tab_layer){
+double geterror(LAYER* tab_layer, double* out){
 	double res =0.0;
 	int nb=0;
+	double sum=0.0;
 
   	//#pragma omp for
 	for (int i = 0; i < tab_layer->nbnode; ++i)
 	{ 
-		if(tab_layer->error[i]<0){
-			res -= tab_layer->error[i];
-		}
-		else{
-			res += tab_layer->error[i];
+		res=tab_layer->value[i]-out[i];
+		if(res<0){
+			sum+=-res ;
+		}else{
+			sum+=res;
 		}
 		nb++;
 	}
-	return res/(nb+1);
+	return sum/(nb+1);
 }
 
 double* gettab_result(LAYER* tab_layer){
@@ -112,7 +113,7 @@ void compute_matrix_sig(double* a, double* b ,double* c, double* d, int n, int m
 	int i, j;
 	for (i = 0; i < m; i++) {
 		for (j = 0; j < n; j++) {
-			c[i] += b[j*m+i]*(a[j]+d[j]);
+			c[i] += b[j*m+i]*(a[j]);
 		}
 		c[i]= sigmoid(c[i]);
 	}
@@ -176,19 +177,19 @@ void compute_matrix_sig_kernel(double* a, cl_mem ABuffer, double* b , cl_mem BBu
 
 void soustraction_vector(double* a, double* b, double* c, int n){
 	for (int i = 0; i < n; ++i)
-	{
-		c[i] = a[i]-b[i];
+	{	
+		c[i] = (a[i]-b[i])*sigmoid(a[i])*sigmoid((1-a[i]));
 	}
 }
 
-void compute_matrix(double* a, double* b, double *c, int n, int m){
+void compute_matrix(double* a, double* b, double *c, int n, int m, double* value){
 	int i, j;
 	{	
 		for (i = 0; i < m; i++) {
 			for (j = 0; j < n; j++) {
-				c[i] += b[j*m+i]*a[j];
+				c[i] += b[i*n+j]*a[j];
 			}
-			c[i]= tanh(c[i]);
+			c[i] *= value[i]*(1-value[i]);
 		}
 	}
 }
@@ -204,37 +205,38 @@ void change_weight_CPU(double * weight, double* biais, double* error_next, doubl
 
 		for (i = 0; i < raw; ++i)
 		{
-			tmp = error_next[j]*leanintegrate;
+			tmp = error_next[j]*leanintegrate*value[i];
 			if(isoutput){
-				weight[i*col+j] *= 0.1;
 				weight[i*col+j] -=tmp;
 			}
 			else{
-				tmp*= (1-(value_next[j]*value_next[j]));
+				//tmp*= value_next[j];
 				weight[i*col+j] -=tmp;
+				if(weight[i*col+j]>normalisation){
+					weight[i*col+j]=normalisation;
+				}else if(weight[i*col+j]<-normalisation){
+					weight[i*col+j]=-normalisation;
+				}
 			}
-			if(weight[i*col+j]>normalisation){
-				weight[i*col+j]=normalisation;
-			}else if(weight[i*col+j]<-normalisation){
-				weight[i*col+j]=-normalisation;
-			}
+
 			
 		}
+		tmp = error_next[j]*leanintegrate;
 		if(isoutput){
 			biais[j]-=tmp;
-			
+			// biais[j]=0;	
 		}else{
-			tmp *= (1-(value_next[i]*value_next[i]));
+			//tmp *= value_next[i];
 			biais[j]-=tmp;
+			if(biais[j]>normalisation){
+				biais[j]=normalisation;
+			}
+			else if(biais[j]<-normalisation){
+				biais[j]=-normalisation;
+			}
 
 		}
-		if(biais[j]>normalisation){
-			biais[j]=normalisation;
-		}
-		else if(biais[j]<-normalisation){
-			biais[j]=-normalisation;
-		}
-		
+
 	}
 }
 
@@ -399,7 +401,11 @@ bool init() {
 
  }
 
-
+ void init_value(LAYER* l, float* matrix, int index){
+ 	for(int i=0; i<layer_size[0];i++){
+ 		l->value[i]=matrix[index*layer_size[0]+i];
+ 	}
+ }
 
  void init_layer(LAYER* l, float* matrix, int index, int currentlayer){
 
@@ -535,31 +541,58 @@ bool init() {
 
  void rnnlearn(LAYER* tab_layer[], double learningrate){
  	
- 	for (int i = NB_LAYOUT-2; i >= 0; i--){
-    	//multiplication de matrice  error i = error i+1 * weight i
- 		compute_matrix(tab_layer[i+1]->error, tab_layer[i]->weight, tab_layer[i]->error, tab_layer[i+1]->nbnode, tab_layer[i]->nbnode);
- 	}
-
+ 	// for (int i = NB_LAYOUT-2; i >= 0; i--){
+  //   	//multiplication de matrice  error i = error i+1 * weight i
+ 	// 	compute_matrix(tab_layer[i+1]->error, tab_layer[i]->weight, tab_layer[i]->error, tab_layer[i+1]->nbnode, tab_layer[i]->nbnode, tab_layer[i]->value);
+ 	// }
+ 	double normalize =5.0;
  	for(int i = NB_LAYOUT-2; i>=0; i--){
- 		if(i == NB_LAYOUT-2){
-			//if(KERNEL){
-			//	change_weight_kernel(tab_layer[i]->weight, tab_layer[i+1]->biais, tab_layer[i+1]->error, tab_layer[i+1]->value, 
-			//		learningrate, tab_layer[i]->nbnode, tab_layer[i+1]->nbnode, 1);
-			//}else{
- 			change_weight_CPU(tab_layer[i]->weight, tab_layer[i+1]->biais, tab_layer[i+1]->error, tab_layer[i+1]->value,  tab_layer[i]->value,
- 				learningrate, tab_layer[i]->nbnode, tab_layer[i+1]->nbnode,1);
-			//}
+ 		double* deltaW = (double*)malloc(sizeof(double)*tab_layer[i]->nbnode*tab_layer[i+1]->nbnode);
+ 		//if(i == NB_LAYOUT-2){
+ 		for (int j = 0; j < tab_layer[i]->nbnode; ++j)
+ 		{
+ 			for (int k = 0; k < tab_layer[i+1]->nbnode; ++k)
+ 			{
+                    // printf("k : %d\n", k);
+ 				deltaW[j*tab_layer[i+1]->nbnode+k] = (tab_layer[i+1]->error[k]*(tab_layer[i]->value[j])*learningrate);
+ 				tab_layer[i]->error[j] += tab_layer[i]->weight[j*tab_layer[i+1]->nbnode+k]*tab_layer[i+1]->error[k];
+ 				tab_layer[i]->weight[j*tab_layer[i+1]->nbnode+k] -= deltaW[j*tab_layer[i+1]->nbnode+k];
+ 				
 
- 		}else{
-			// if(KERNEL){
-			// 	change_weight_kernel(tab_layer[i]->weight, tab_layer[i+1]->biais, tab_layer[i+1]->error, tab_layer[i+1]->value, 
-			// 		learningrate, tab_layer[i]->nbnode, tab_layer[i+1]->nbnode, 0);
-			// }else{
+ 				double tmp;
+ 				if(i != NB_LAYOUT-2){
+ 					tmp = (1 - tab_layer[i+1]->value[k])*tab_layer[i+1]->value[k];
+ 					tmp *= learningrate * tab_layer[i+1]->error[k];
+ 					tab_layer[i+1]->biais[k] -= tmp;
+ 				}else{
+ 					tab_layer[i+1]->biais[k] -= learningrate * tab_layer[i+1]->error[k];
+ 				}
 
- 			change_weight_CPU(tab_layer[i]->weight, tab_layer[i+1]->biais, tab_layer[i+1]->error, tab_layer[i+1]->value, tab_layer[i]->value,
- 				learningrate, tab_layer[i]->nbnode, tab_layer[i+1]->nbnode,0); 
-			//}
+ 				if(tab_layer[i]->biais[k]>normalize){
+ 					tab_layer[i]->biais[k]=normalize;
+ 				}else if(tab_layer[i]->biais[k]<-normalize){
+ 					tab_layer[i]->biais[k]=-normalize;
+ 				} 
+
+ 				if(tab_layer[i]->weight[j*tab_layer[i+1]->nbnode+k]>normalize){
+ 					tab_layer[i]->weight[j*tab_layer[i+1]->nbnode+k]=normalize;
+ 				}else if(tab_layer[i]->weight[j*tab_layer[i+1]->nbnode+k]<(-normalize)){
+ 					tab_layer[i]->weight[j*tab_layer[i+1]->nbnode+k] = (-normalize);
+ 				}
+
+ 					// if (i == 0 && j == 0 && k==0){
+ 					// 	printf("%f",tab_layer[i]->weight[j*tab_layer[i+1]->nbnode+k] );
+ 					// 	printf("\nError rnnLearn%f\n", tab_layer[i+1]->error[k]);
+ 					// }
+
+ 			}
+ 			tab_layer[i]->error[j] *= (tab_layer[i]->value[j])*(1-tab_layer[i]->value[j]);
+ 			//tab_layer[i]->biais[j] -= learningrate *tab_layer[i]->error[j]*(tab_layer[i]->value[j])*(1-(tab_layer[i]->value[j]));
+
+
+
  		}
+ 		free(deltaW);
  	}
 
   #pragma omp for
@@ -570,67 +603,6 @@ bool init() {
  	}
  }
 
- void test_KDD(const char* file_name_test, LAYER* tab_layer[]){
- 	double start, end;
- 	start = getCurrentTimestamp();
-
- 	float* matrix = preprocessing(file_name_test);
- 	col_matrix = get_col_matrix();
- 	raw_matrix = get_raw_matrix();
- 	nb_error =get_nberror();
-
- 	int* out_process = get_output();
- 	int* out_compt = (int*)malloc(sizeof(int*)*nb_error);
-
-    #pragma omp for
- 	for (int i = 0; i < nb_error; i++)
- 		out_compt[i] = 0;
-
- 	init_layer_size();
- 	double* out;
-
- 	float learn=0.1;
- 	double* tab_result;
- 	double error =1.0;
-
- 	printf("End init Layer for processing\n");
- 	for(int i=0; i<raw_matrix;i++){
- 		out = choose_output(out_process,i);
-        //printf("Begin of learn\n");
- 		init_layer(tab_layer[0], matrix, i,0);
-
- 		rnnsetstart(tab_layer);
- 		rnnset(tab_layer,out);
- 		rnnlearn(tab_layer,learn);
-
- 		error = geterror(tab_layer[NB_LAYOUT-1]);
-
- 		ajustError(tab_layer[NB_LAYOUT-1]);
-
- 		if (DEBUG)
- 			printf("Error %f\n", error);
-
- 		tab_result = gettab_result(tab_layer[NB_LAYOUT-1]);
- 		compte_resultat(tab_result, out_compt, tab_layer[NB_LAYOUT-1]->nbnode, &average_sure);
-
-
- 		if (DEBUG){
- 			printf("Resulat  ligne : %d\n", i );
- 			show_result(tab_result, layer_size[NB_LAYOUT-1]);
- 		}
-
- 		free_layer(tab_layer[0]);
- 		free(out);
- 		free(tab_result);
- 	}
-
- 	printf("Finish Testing look into result.csv for result\n");
- 	end = getCurrentTimestamp() ;
- 	printf("Time to execute for Testing : %fd\n", end-start );
- 	postprocessing(out_compt);
- 	free(out_compt);
- 	free(matrix);
- }
 
  void learn_KDD(const char* file_name_learn, const char* file_name_test){
  	double start, end, pre;
@@ -638,7 +610,7 @@ bool init() {
  	LAYER* tab_layer[NB_LAYOUT];
 
  	start = getCurrentTimestamp();
- 	float* matrix = preprocessing(file_name_learn);
+ 	float* matrix = preprocessing(file_name_learn,0);
  	pre = getCurrentTimestamp();
  	printf("Temps de preprocessing : %f\n", pre-start);
  	col_matrix = get_col_matrix();
@@ -663,7 +635,7 @@ bool init() {
  	double* out;
 
  	double jtot=0.0;
- 	double learn=0.03;
+ 	double learn=0.1;
  	double* tab_result;
  	for (int i = 0; i < NB_LAYOUT; ++i)
  	{
@@ -679,41 +651,48 @@ bool init() {
  	}
  	int j=0;
  	printf("End init Layer for processing\n");
- 	for (int k = 0; k <= 0; ++k)
+
+ 	for (int i = 0; i < 1; ++i)
  	{
  		for(int i=0; i<raw_matrix;i++){
- 		printf("%d\n",i );
- 		out = choose_output(out_process,i);
- 		init_layer(tab_layer[0], matrix, i+1,0);
- 		double error = 10.0;
-
- 		while(error > 0.15 && j<100){
+ 			printf("%d\n",i );
+ 			out = choose_output(out_process,i);
+ 			//init_layer(tab_layer[0], matrix, i,0);
+ 			init_value(tab_layer[0],matrix,i);
+ 			double error = 10.0;
  			rnnsetstart(tab_layer);
- 			rnnset(tab_layer, out);
- 			rnnlearn(tab_layer,learn);
 
- 			error = geterror(tab_layer[NB_LAYOUT-1]);
- 			j++;
+ 			while(error > 0.05 && j<100){
+ 				rnnset(tab_layer, out);
+ 				//ajustError(tab_layer[NB_LAYOUT-1]);
+ 				rnnlearn(tab_layer,learn);
+ 				// tab_result = gettab_result(tab_layer[NB_LAYOUT-1]);
+ 				// show_result(tab_result, layer_size[NB_LAYOUT-1]);
+
+
+ 				error = geterror(tab_layer[NB_LAYOUT-1],out);
+ 				j++;
+ 			}
+ 			jtot += j;
+ 			printf("j : %d\n",j );
+ 			j=0;
+
+
+ 			if (DEBUG)
+ 				printf("Error %f\n", error);
+
+ 			tab_result = gettab_result(tab_layer[NB_LAYOUT-1]);
+ 			compte_resultat(tab_result, out_compt, out, tab_layer[NB_LAYOUT-1]->nbnode, &average_sure);
+
+ 			if (DEBUG)
+ 				show_result(tab_result, layer_size[NB_LAYOUT-1]);
+
+ 			//free_layer(tab_layer[0]);
+ 			free(out);
+ 			free(tab_result);
  		}
- 		jtot += j;
- 		printf("j : %d\n",j );
- 		j=0;
- 		ajustError(tab_layer[NB_LAYOUT-1]);
-
- 		if (DEBUG)
- 			printf("Error %f\n", error);
-
- 		tab_result = gettab_result(tab_layer[NB_LAYOUT-1]);
- 		compte_resultat(tab_result, out_compt, tab_layer[NB_LAYOUT-1]->nbnode, &average_sure);
-
- 		if (DEBUG)
- 			show_result(tab_result, layer_size[NB_LAYOUT-1]);
-
- 		free_layer(tab_layer[0]);
- 		free(out);
- 		free(tab_result);
  	}
- 	}
+
  	
 
  	printf("Finish learning\n");
@@ -723,57 +702,45 @@ bool init() {
  	postprocessing(out_compt);
  	free(matrix);
 
- 	float* matrix_test = preprocessing(file_name_test);
+ 	float* matrix_test = preprocessing(file_name_test,1);
  	start = getCurrentTimestamp();
  	col_matrix = get_col_matrix();
  	raw_matrix = get_raw_matrix();
+ 	printf("raw_matrix : %d\n", raw_matrix );
+ 	printf("col matrix : %d \n", col_matrix);
+ 	out_process = get_output();
 
  	//#pragma omp for
  	for (int i = 0; i < nb_error; i++)
  		out_compt[i] = 0;
 
-
-
- 	for (int i=0; i<NB_LAYOUT;i++){
- 		if(tab_layer[i]->typeLayer == NB_LAYOUT-1){
- 			for(int k =0; k<tab_layer[i]->nbnode ;k++){
- 				tab_layer[i]->value[k] = 0.0;
- 			} 
- 		}else{
- 			for(int k =0; k<tab_layer[i]->nbnode ;k++){
- 				tab_layer[i]->value[k] = 0.0;
- 			}
- 		}
- 	}
-
- 	learn =0.03;
  	printf("End init Layer for processing\n");
  	for(int i=0; i<raw_matrix;i++){
  		out = choose_output(out_process,i);
  		double error= 10.0;
-        //printf("Begin of learn\n");
- 		init_layer(tab_layer[0], matrix_test, i,0);
+ 		//init_layer(tab_layer[0], matrix_test, i,0);
+ 		init_value(tab_layer[0],matrix_test,i);
+
 
  		rnnsetstart(tab_layer);
  		rnnset(tab_layer,out);
- 		rnnlearn(tab_layer,learn);
-
- 		error = geterror(tab_layer[NB_LAYOUT-1]);
-
  		ajustError(tab_layer[NB_LAYOUT-1]);
+
+ 		//rnnlearn(tab_layer,learn);
+ 		error = geterror(tab_layer[NB_LAYOUT-1], out);
+
 
  		if (DEBUG)
  			printf("Error %f\n", error);
 
  		tab_result = gettab_result(tab_layer[NB_LAYOUT-1]);
- 		compte_resultat(tab_result, out_compt, tab_layer[NB_LAYOUT-1]->nbnode, &average_sure);
+ 		compte_resultat(tab_result, out_compt,out, tab_layer[NB_LAYOUT-1]->nbnode, &average_sure);
 
  		if (DEBUG){
  			printf("Resulat  ligne : %d\n", i);
  			show_result(tab_result, layer_size[NB_LAYOUT-1]);
  		}
 
- 		free_layer(tab_layer[0]);
  		free(out);
  		free(tab_result);
  	}
@@ -786,7 +753,6 @@ bool init() {
  	free(out_compt);
  	free(matrix_test);
 
- 	//test_KDD(file_name_test, tab_layer);
  }
 
 

@@ -6,7 +6,7 @@
 	#define NB_COL_NSL 41
 
 
-	float* preprocessing(const char *);
+	float* preprocessing(const char *, int);
 	void make_matrix(const char*);
 	void make_vector(int i, char* element);
 	void show_matrix();

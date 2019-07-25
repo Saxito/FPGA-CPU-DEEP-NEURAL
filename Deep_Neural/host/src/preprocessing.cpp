@@ -4,24 +4,30 @@
 #include <cstring>
 #include "preprocessing.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 
 const char* resul_name = "./data/result.txt";
 
 
-char** tab_protocol;
-char** tab_flag;
-char** tab_service;
+const char* tab_protocol[3] = {"tcp","udp","icmp"};
+const char* tab_flag[11] ={"SF","S0","REJ","RSTR","SH","RSTO","S1","RSTOS0","S3","S2","OTH"};
+const char* tab_service[70] = {"ftp_data","other","private","http","remote_job","name","netbios_ns","eco_i","mtp","telnet","finger","domain_u",
+                        "supdup","uucp_path","Z39_50","smtp","csnet_ns","uucp","netbios_dgm","urp_i","auth","domain","ftp","bgp","ldap",
+                        "ecr_i","gopher","vmnet","systat","http_443","efs","whois","imap4","iso_tsap","echo","klogin","link","sunrpc","login",
+                        "kshell","sql_net","time","hostnames","exec","ntp_u","discard","nntp","courier","ctf","ssh","daytime",
+                        "shell","netstat","pop_3","nnsp","IRC","pop_2","printer","tim_i","pm_dump","red_i","netbios_ssn","rje","X11","urh_i",
+                        "http_8001","aol","http_2784","tftp_u","harvest"};
 char** tab_out;
-int lenght_protocol;
-int lenght_service;
-int lenght_flag;
+int lenght_protocol=3;
+int lenght_service=70;
+int lenght_flag=11;
 int lenght_out;
+
 
 const char* Dos[11] = {"back", "land", "neptune", "pod","smurf", "teardrop", "mailbomb", "processtable", "udpstorm", "apache2", "worm"};
 const char* R2L[15] = {"warezclient","ftp_write", "guess_passwd","imap", "multihop", "phf", "spy", "warezmaster", "xlock", "xsnoop", "snmpguess", 
-                      "snmpgetattack", "httptunnel", "sendmail", "named"};
+"snmpgetattack", "httptunnel", "sendmail", "named"};
 const char* U2R[7] = {"buffer_overflow", "loadmodule", "perl", "rootkit", "sqlattack", "xterm", "ps"};
 const char* Probe[6] = {"ipsweep", "nmap", "portsweep","satan", "mscan", "saint"};
 const char* Normal[1] = {"normal"};
@@ -30,6 +36,7 @@ const char* Name_ERROR[5]= {"Normal","Probe","U2R","Dos","R2L"};
 
 int raw,col;
 int nb_col_matrix;
+int nb_col_prev=0.0;
 int nb_raw_matrix;
 float* matrix;
 int* out;
@@ -37,15 +44,15 @@ int* out_compt;
 
 char* getfield(char* line, int num)
 {
-    char* tok;
-    for (tok = strtok(line, ",");
-            tok && *tok;
-            tok = strtok(NULL, ",\n"))
-    {
-        if (!--num)
-            return tok;
-    }
-    return NULL;
+  char* tok;
+  for (tok = strtok(line, ",");
+    tok && *tok;
+    tok = strtok(NULL, ",\n"))
+  {
+    if (!--num)
+      return tok;
+  }
+  return NULL;
 }
 
 int is_present(char* element, char** tab, int n){
@@ -71,33 +78,17 @@ void show_tab(char ** tab, int n){
 }
 
 void reading_file(const char* file){
-  tab_protocol = (char**)malloc(sizeof(char*)*SIZE_PRE_PROC);
-  #pragma omp for
-  for (int i = 0; i < SIZE_PRE_PROC; i++)
-        tab_protocol[i] = (char*)malloc(SIZE_PRE_PROC * sizeof(char));
-  tab_flag = (char**)malloc(sizeof(char*)*SIZE_PRE_PROC);
-  #pragma omp for
-  for (int i = 0; i < SIZE_PRE_PROC; i++)
-        tab_flag[i] = (char*)malloc(SIZE_PRE_PROC * sizeof(char));
-  tab_service= (char**)malloc(sizeof(char*)*SIZE_PRE_PROC);    
-  #pragma omp for
-  for (int i = 0; i < SIZE_PRE_PROC; i++)
-        tab_service[i] = (char*)malloc(SIZE_PRE_PROC * sizeof(char));
   tab_out= (char**)malloc(sizeof(char*)*50);    
   #pragma omp for
   for (int i = 0; i < 50; i++)
-        tab_out[i] = (char*)malloc(100 * sizeof(char));
+    tab_out[i] = (char*)malloc(100 * sizeof(char));
   out_compt = (int*)malloc(sizeof(int*)*NB_ERROR_MAX);    
   #pragma omp for
   for (int i = 0; i < NB_ERROR_MAX; i++)
-        out_compt[i] = 0;
+    out_compt[i] = 0;
+  
+  lenght_out=0;
 
-  //Preprocessing on protocol;
-  lenght_protocol = 0;
-  lenght_flag = 0;
-  lenght_service = 0;
-  lenght_out = 0;
- 
   FILE* stream = fopen(file, "r");
   
   if(stream == NULL){
@@ -111,38 +102,17 @@ void reading_file(const char* file){
 
   while (fgets(line, 1024, stream))
   {   
-      char* tmp = strdup(line);
+    char* tmp = strdup(line);
 
+    tmp = strdup(line);
+    element = getfield(tmp, 42);
+    if(!is_present(element,tab_out,lenght_out)){
+      strcpy(tab_out[lenght_out],element);
+      lenght_out++;
+    }
 
-      element = getfield(tmp, 2);
-      if(!is_present(element,tab_protocol,lenght_protocol)){
-        strcpy(tab_protocol[lenght_protocol],element);
-        lenght_protocol++;
-      }
-
-      tmp = strdup(line);
-      element = getfield(tmp, 3);
-      if(!is_present(element,tab_service,lenght_service)){
-        strcpy(tab_service[lenght_service],element);
-        lenght_service++;
-      }
-
-      tmp = strdup(line);
-      element = getfield(tmp, 4);
-      if(!is_present(element,tab_flag,lenght_flag)){
-        strcpy(tab_flag[lenght_flag],element);
-        lenght_flag++;
-      }
-
-      tmp = strdup(line);
-      element = getfield(tmp, 42);
-      if(!is_present(element,tab_out,lenght_out)){
-        strcpy(tab_out[lenght_out],element);
-        lenght_out++;
-      }
-
-      free(tmp);
-      nb_raw_matrix++;
+    free(tmp);
+    nb_raw_matrix++;
   }
 
   fclose(stream);
@@ -150,12 +120,12 @@ void reading_file(const char* file){
   nb_col_matrix = NB_COL_NSL+lenght_protocol+lenght_flag+lenght_service-3;
 
   if(DEBUG){
-    show_tab(tab_protocol,lenght_protocol);
-    printf("%d\n", lenght_protocol);
-    show_tab(tab_service,lenght_service);
-    printf("%d\n", lenght_service);
-    show_tab(tab_flag,lenght_flag);
-    printf("%d\n", lenght_flag );
+    // show_tab(tab_protocol,lenght_protocol);
+    // printf("%d\n", lenght_protocol);
+    // show_tab(tab_service,lenght_service);
+    // printf("%d\n", lenght_service);
+    // show_tab(tab_flag,lenght_flag);
+    // printf("%d\n", lenght_flag );
     show_tab(tab_out, lenght_out);
     printf("%d\n", lenght_out );
   }
@@ -195,7 +165,7 @@ void make_vector(int i, char* element){
     }
   }
   else if(i==3){
-      for(int k=0; k<lenght_flag;k++){
+    for(int k=0; k<lenght_flag;k++){
       if(!strcmp(element,tab_flag[k])){
         matrix[raw*nb_col_matrix+col]=1.0;
       }else{
@@ -241,14 +211,11 @@ void make_matrix(const char* file){
   if(DEBUG)
     show_matrix();
 
-  free(tab_protocol);
-  free(tab_flag);
-  free(tab_service);
   fclose(stream);
 
 }
 
-float* preprocessing(const char* file){
+float* preprocessing(const char* file, int istest){
   printf("Preprocessing in charge\n");
   printf("Reading file\n");
   reading_file(file);

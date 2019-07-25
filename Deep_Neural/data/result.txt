@@ -1,6 +1,6 @@
 Nom de l'attaque;nombre dans le fichier;nombre trouvé;différence;precision
-Normal 9711    9712    -1    1.000103   
-Probe 2421    2420    1    0.999587   
-U2R 67    67    0    1.000000   
-Dos 7460    7460    0    1.000000   
-R2L 2885    2885    0    1.000000   
+Normal 9711    8865    846    0.912882   
+Probe 2421    2446    -25    1.010326   
+U2R 67    2648    -2581    39.522388   
+Dos 7460    7478    -18    1.002413   
+R2L 2885    0    2885    0.000000   

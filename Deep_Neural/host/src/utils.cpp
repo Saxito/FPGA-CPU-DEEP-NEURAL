@@ -20,8 +20,9 @@ double* choose_output(int* output_process, int i){
   return res;
 }
 
-void compte_resultat(double* tab, int* compt, int taille, double* average_sure){
+void compte_resultat(double* tab, int* compt, double* out, int taille, double* average_sure){
   int compteur=0;
+  int result=0;
   double res=0.0;
   
   for (int i = 0; i < taille; ++i)
@@ -30,8 +31,12 @@ void compte_resultat(double* tab, int* compt, int taille, double* average_sure){
       compteur=i;
       res=tab[i];
     }
+    if(out[i]==1.0){
+      result=i;
+    }
   }
   *average_sure += res;
+  if(compteur == result || (compteur>0 && result >0))
   compt[compteur]++;
 }
 
