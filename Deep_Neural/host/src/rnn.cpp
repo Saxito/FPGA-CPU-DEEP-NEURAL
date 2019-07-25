@@ -161,7 +161,7 @@ void compute_matrix_sig_kernel(double* a, cl_mem ABuffer, double* b , cl_mem BBu
 	checkError(status, "Failed to set kernel arg 2");
 	status |= clFinish(queue);
 
-	end = getCurrentTimestamp;
+	end = getCurrentTimestamp();
 	overload += end-start;
 	//lauch queue
 	size_t global_size[2]={(size_t)m,(size_t)m};
