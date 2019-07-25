@@ -1,7 +1,7 @@
 #include <math.h>
 
 #define DEBUG 1
-#define KERNEL 0
+#define KERNEL 1
 #define SIZE_HD 210
 #define SIZE_HD_LSTM 500
 #define NB_LAYOUT 5

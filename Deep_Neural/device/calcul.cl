@@ -1,15 +1,30 @@
+#pragma OPENCL EXTENSION cl_intel_channels : enable
+channel double c_value;
 
 
 __kernel void kvectormulmatrix(__global double* restrict A, __global double* restrict B, __global double* restrict C, __global double* restrict D, 
-	const int n, const int m, const int sigmoide){
+	const int n, const int m, const int sigmoide, const int isinside){
 	
 	const int i = get_global_id(0); //== m (taille du vector input);
+
 	double tmp =0.0;
-	
+	__local double value[122]; 
+	if(isinside){
+		for (int j = 0; j < n; ++j)
+		{
+			value[j] = read_channel_intel(c_value);
+		}
+	}else{
+		for (int j = 0; j < n; ++j)
+		{
+			value[j] = A[j];
+		}
+	}
+
 	#pragma unroll
 	for (int j = 0; j < n; ++j)
 	{
-    	tmp+= B[j*m+i]*(A[j]+D[j]);
+    	tmp+= B[j*m+i]*(value[j]+D[j]);
 
 	}
 	if(sigmoide){
@@ -17,6 +32,8 @@ __kernel void kvectormulmatrix(__global double* restrict A, __global double* res
 	}else{
 		C[i]= tmp;
 	}
+
+	write_channel_intel(c_value,C[i]);
 }
 
 

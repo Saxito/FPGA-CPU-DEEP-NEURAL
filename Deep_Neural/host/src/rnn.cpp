@@ -29,6 +29,7 @@ int col_matrix;
 int raw_matrix;
 int nb_error;
 double average_sure =0.0;
+double overload=0.0;
 
 struct _layer {
 	int typeLayer;
@@ -120,9 +121,11 @@ void compute_matrix_sig(double* a, double* b ,double* c, double* d, int n, int m
 }
 
 void compute_matrix_sig_kernel(double* a, cl_mem ABuffer, double* b , cl_mem BBuffer , double* c, cl_mem CBuffer, double* d, cl_mem DBuffer,
-	int n, int m){
+	int n, int m, int isinside){
 	//multiplication
+	double start,end;
 
+	start = getCurrentTimestamp();
 	//write buffer
 	status  = clEnqueueWriteBuffer(queue, CBuffer, CL_FALSE,
 		0, sizeof(double)*m, c, 0, NULL, NULL);
@@ -156,8 +159,14 @@ void compute_matrix_sig_kernel(double* a, cl_mem ABuffer, double* b , cl_mem BBu
 
 	status = clSetKernelArg(matrix_sig, 6, sizeof(cl_int), &sigmoide);
 	checkError(status, "Failed to set kernel arg 2");
+
+	status = clSetKernelArg(matrix_sig, 7, sizeof(cl_int), &isinside);
+	checkError(status, "Failed to set kernel arg 2");
+
 	status |= clFinish(queue);
 
+	end= getCurrentTimestamp();
+	overload += end-start;
 	//lauch queue
 	size_t global_size[2]={(size_t)m,(size_t)m};
 
@@ -165,12 +174,10 @@ void compute_matrix_sig_kernel(double* a, cl_mem ABuffer, double* b , cl_mem BBu
 
 	status = clEnqueueNDRangeKernel(queue, matrix_sig, 1, NULL, global_size, local_size, 0, NULL, NULL);
 	checkError(status, "Failed to launch kernel");
-	status |= clFinish(queue);
 
    	//sigmoide
-	status  = clEnqueueReadBuffer(queue, CBuffer, CL_TRUE,
-		0, sizeof(double) * m , c  , 0, NULL, NULL);
-
+	// status  = clEnqueueReadBuffer(queue, CBuffer, CL_TRUE,
+	// 	0, sizeof(double) * m , c  , 0, NULL, NULL);
 	//cleanup();
 }
 
@@ -527,7 +534,7 @@ bool init() {
  			if(KERNEL){
  				compute_matrix_sig_kernel(tab_layer[i-1]->value, tab_layer[i-1]->BufferValue, tab_layer[i-1]->weight, tab_layer[i-1]->BufferWeight,
  					tab_layer[i]->value, tab_layer[i]->BufferValue, tab_layer[i-1]->value_prev, tab_layer[i-1]->BufferValue_Prev,
- 					tab_layer[i-1]->nbnode, tab_layer[i]->nbnode);     
+ 					tab_layer[i-1]->nbnode, tab_layer[i]->nbnode, i);     
  			}
  			else{
  				compute_matrix_sig(tab_layer[i-1]->value, tab_layer[i-1]->weight, tab_layer[i]->value, tab_layer[i-1]->value_prev, tab_layer[i-1]->nbnode, tab_layer[i]->nbnode);       
@@ -603,6 +610,14 @@ bool init() {
  	}
  }
 
+ void readvalue(LAYER* tab_layer[]){
+ 	for (int i = 1; i < NB_LAYOUT; ++i)
+ 	{
+ 		status  = clEnqueueReadBuffer(queue, tab_layer[i]->BufferValue, CL_TRUE,
+		0, sizeof(double) * tab_layer[i]->nbnode , tab_layer[i]->value, 0, NULL, NULL);
+ 	}
+ }
+
 
  void learn_KDD(const char* file_name_learn, const char* file_name_test){
  	double start, end, pre;
@@ -652,6 +667,15 @@ bool init() {
  	int j=0;
  	printf("End init Layer for processing\n");
 
+
+ 	//Init parralélisation
+ 	out = choose_output(out_process,0);
+ 	init_value(tab_layer[0],matrix,0);
+ 	rnnset(tab_layer, out);
+ 	readvalue(tab_layer);
+
+
+
  	for (int i = 0; i < 1; ++i)
  	{
  		for(int i=0; i<raw_matrix;i++){
@@ -665,7 +689,13 @@ bool init() {
  			while(error > 0.05 && j<100){
  				rnnset(tab_layer, out);
  				//ajustError(tab_layer[NB_LAYOUT-1]);
- 				rnnlearn(tab_layer,learn);
+ 				if(j==0 && i>0){
+	 				init_value(tab_layer[0],matrix,i-1);
+	 				rnnlearn(tab_layer,learn);
+	 				init_value(tab_layer[0],matrix,i);
+ 				}
+ 				
+ 				readvalue(tab_layer);
  				// tab_result = gettab_result(tab_layer[NB_LAYOUT-1]);
  				// show_result(tab_result, layer_size[NB_LAYOUT-1]);
 
