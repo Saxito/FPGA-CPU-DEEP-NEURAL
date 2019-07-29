@@ -1,18 +1,16 @@
-#pragma OPENCL EXTENSION cl_intel_channels : enable
 channel double c_value;
 
 
 __kernel void kvectormulmatrix(__global double* restrict A, __global double* restrict B, __global double* restrict C, __global double* restrict D, 
 	const int n, const int m, const int sigmoide, const int isinside){
 	
-	const int i = get_global_id(0); //== m (taille du vector input);
 
-	double tmp =0.0;
-	__local double value[122]; 
+	double value[210]; 
+	//printf("  %d %d\n", n,m);
 	if(isinside){
 		for (int j = 0; j < n; ++j)
-		{
-			value[j] = read_channel_intel(c_value);
+		{	
+			value[j] = read_channel_altera(c_value);
 		}
 	}else{
 		for (int j = 0; j < n; ++j)
@@ -20,25 +18,37 @@ __kernel void kvectormulmatrix(__global double* restrict A, __global double* res
 			value[j] = A[j];
 		}
 	}
+	
 
-	#pragma unroll
-	for (int j = 0; j < n; ++j)
+	for (int i = 0; i < m; ++i)
 	{
-    	tmp+= B[j*m+i]*(value[j]+D[j]);
+		double tmp =0.0;
 
-	}
-	if(sigmoide){
-		C[i] = 1/(1+exp(-tmp));
-	}else{
-		C[i]= tmp;
+
+		#pragma unroll
+		for (int j = 0; j < n; ++j)
+		{
+			tmp+= B[j*m+i]*(value[j]);
+
+		}
+
+		tmp+=C[i];
+		if(sigmoide){
+			C[i] = 1/(1 + exp(-tmp));
+		}
+		if(isinside!=3){
+			write_channel_altera(c_value,C[i]);
+			
+		}
 	}
 
-	write_channel_intel(c_value,C[i]);
+	
+
 }
 
 
 __kernel void kchange_weight(__global double* restrict weight, __global double* restrict error_next,__global double* restrict value_next ,
-						 	const double leanintegrate, const int raw, const int col, const int isoutput){
+	const double leanintegrate, const int raw, const int col, const int isoutput){
 	
 	int i = get_global_id(0);
 	int j = get_global_id(1);

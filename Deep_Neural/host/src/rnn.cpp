@@ -26,7 +26,7 @@ typedef struct _layer LAYER;
 
 int layer_size[NB_LAYOUT];
 int col_matrix;
-int raw_matrix;
+int raw_matrix, col_matrix_test, raw_matrix_test;
 int nb_error;
 double average_sure =0.0;
 double overload=0.0;
@@ -115,8 +115,18 @@ void compute_matrix_sig(double* a, double* b ,double* c, double* d, int n, int m
 	for (i = 0; i < m; i++) {
 		for (j = 0; j < n; j++) {
 			c[i] += b[j*m+i]*(a[j]);
+			// if(i==0 &&j<20){
+
+			// 	printf("weight[%d]normal : %f\n",j*m+i, b[j*m+i]);
+			// 	printf("a[%d]normal : %f\n",j, a[j]);
+
+			// }
 		}
+		// if(i<20)
+		// 	printf("tmp[%d]normal : %f\n",i, c[i]);
 		c[i]= sigmoid(c[i]);
+		// if(i<20)
+		// 	printf("c[%d]normal : %f\n",i, c[i]);
 	}
 }
 
@@ -162,23 +172,19 @@ void compute_matrix_sig_kernel(double* a, cl_mem ABuffer, double* b , cl_mem BBu
 
 	status = clSetKernelArg(matrix_sig, 7, sizeof(cl_int), &isinside);
 	checkError(status, "Failed to set kernel arg 2");
-
-	status |= clFinish(queue);
+	//status |= clFinish(queue);
 
 	end= getCurrentTimestamp();
 	overload += end-start;
 	//lauch queue
-	size_t global_size[2]={(size_t)m,(size_t)m};
+	size_t global_size[2]={(size_t)1,(size_t)1};
 
 	size_t local_size[2]= {(size_t)1,(size_t)1};
 
 	status = clEnqueueNDRangeKernel(queue, matrix_sig, 1, NULL, global_size, local_size, 0, NULL, NULL);
 	checkError(status, "Failed to launch kernel");
+	//status |= clFinish(queue);
 
-   	//sigmoide
-	// status  = clEnqueueReadBuffer(queue, CBuffer, CL_TRUE,
-	// 	0, sizeof(double) * m , c  , 0, NULL, NULL);
-	//cleanup();
 }
 
 
@@ -521,7 +527,7 @@ bool init() {
  }
 
 
- void rnnset(LAYER* tab_layer[], double *out){
+ void rnnset(LAYER* tab_layer[], int kernel){
  	for (int i = 0; i < NB_LAYOUT; ++i)
  	{	
  		for (int j = 0; j < tab_layer[i]->nbnode; ++j){
@@ -531,27 +537,27 @@ bool init() {
  			for (int k = 0; k < tab_layer[i]->nbnode; ++k){
  				tab_layer[i]->value[k] = tab_layer[i]->biais[k];
  			}
- 			if(KERNEL){
+ 			if(kernel){
  				compute_matrix_sig_kernel(tab_layer[i-1]->value, tab_layer[i-1]->BufferValue, tab_layer[i-1]->weight, tab_layer[i-1]->BufferWeight,
  					tab_layer[i]->value, tab_layer[i]->BufferValue, tab_layer[i-1]->value_prev, tab_layer[i-1]->BufferValue_Prev,
- 					tab_layer[i-1]->nbnode, tab_layer[i]->nbnode, i);     
+ 					tab_layer[i-1]->nbnode, tab_layer[i]->nbnode, i-1);     
  			}
  			else{
  				compute_matrix_sig(tab_layer[i-1]->value, tab_layer[i-1]->weight, tab_layer[i]->value, tab_layer[i-1]->value_prev, tab_layer[i-1]->nbnode, tab_layer[i]->nbnode);       
  			}
  		}
  	}
- 	soustraction_vector(tab_layer[NB_LAYOUT-1]->value, out, tab_layer[NB_LAYOUT-1]->error, tab_layer[NB_LAYOUT-1]->nbnode);
 
 
  }
 
- void rnnlearn(LAYER* tab_layer[], double learningrate){
+ void rnnlearn(LAYER* tab_layer[], double learningrate,double * out){
  	
  	// for (int i = NB_LAYOUT-2; i >= 0; i--){
   //   	//multiplication de matrice  error i = error i+1 * weight i
  	// 	compute_matrix(tab_layer[i+1]->error, tab_layer[i]->weight, tab_layer[i]->error, tab_layer[i+1]->nbnode, tab_layer[i]->nbnode, tab_layer[i]->value);
  	// }
+ 	soustraction_vector(tab_layer[NB_LAYOUT-1]->value, out, tab_layer[NB_LAYOUT-1]->error, tab_layer[NB_LAYOUT-1]->nbnode);
  	double normalize =5.0;
  	for(int i = NB_LAYOUT-2; i>=0; i--){
  		double* deltaW = (double*)malloc(sizeof(double)*tab_layer[i]->nbnode*tab_layer[i+1]->nbnode);
@@ -611,11 +617,8 @@ bool init() {
  }
 
  void readvalue(LAYER* tab_layer[]){
- 	for (int i = 1; i < NB_LAYOUT; ++i)
- 	{
- 		status  = clEnqueueReadBuffer(queue, tab_layer[i]->BufferValue, CL_TRUE,
-		0, sizeof(double) * tab_layer[i]->nbnode , tab_layer[i]->value, 0, NULL, NULL);
- 	}
+ 	status  = clEnqueueReadBuffer(queue, tab_layer[NB_LAYOUT-1]->BufferValue, CL_TRUE,
+ 		0, sizeof(double) * tab_layer[NB_LAYOUT-1]->nbnode , tab_layer[NB_LAYOUT-1]->value, 0, NULL, NULL);
  }
 
 
@@ -630,6 +633,10 @@ bool init() {
  	printf("Temps de preprocessing : %f\n", pre-start);
  	col_matrix = get_col_matrix();
  	raw_matrix = get_raw_matrix();
+
+ 	float* matrix_test = preprocessing(file_name_test,1);
+ 	col_matrix_test = get_col_matrix();
+ 	raw_matrix_test = get_raw_matrix();
  	printf("%d\n",raw_matrix );
  	nb_error =get_nberror();
  	int* out_process = get_output();
@@ -669,10 +676,14 @@ bool init() {
 
 
  	//Init parralélisation
- 	out = choose_output(out_process,0);
- 	init_value(tab_layer[0],matrix,0);
- 	rnnset(tab_layer, out);
- 	readvalue(tab_layer);
+ 	// out = choose_output(out_process,0);
+ 	// init_value(tab_layer[0],matrix,0);
+ 	// rnnset(tab_layer,1);
+ 	// printf("finis set kernel\n");
+ 	// readvalue(tab_layer);
+ 	// rnnset(tab_layer,0);
+ 	// tab_result = gettab_result(tab_layer[NB_LAYOUT-1]);
+ 	// show_result(tab_result, layer_size[NB_LAYOUT-1]);
 
 
 
@@ -687,15 +698,13 @@ bool init() {
  			rnnsetstart(tab_layer);
 
  			while(error > 0.05 && j<100){
- 				rnnset(tab_layer, out);
+ 				rnnset(tab_layer,0);
+ 				// rnnset(tab_layer,0);
+ 				// tab_result = gettab_result(tab_layer[NB_LAYOUT-1]);
+ 				// show_result(tab_result, layer_size[NB_LAYOUT-1]);
  				//ajustError(tab_layer[NB_LAYOUT-1]);
- 				if(j==0 && i>0){
-	 				init_value(tab_layer[0],matrix,i-1);
-	 				rnnlearn(tab_layer,learn);
-	 				init_value(tab_layer[0],matrix,i);
- 				}
+ 				rnnlearn(tab_layer,learn,out);
  				
- 				readvalue(tab_layer);
  				// tab_result = gettab_result(tab_layer[NB_LAYOUT-1]);
  				// show_result(tab_result, layer_size[NB_LAYOUT-1]);
 
@@ -732,10 +741,7 @@ bool init() {
  	postprocessing(out_compt);
  	free(matrix);
 
- 	float* matrix_test = preprocessing(file_name_test,1);
  	start = getCurrentTimestamp();
- 	col_matrix = get_col_matrix();
- 	raw_matrix = get_raw_matrix();
  	printf("raw_matrix : %d\n", raw_matrix );
  	printf("col matrix : %d \n", col_matrix);
  	out_process = get_output();
@@ -744,41 +750,73 @@ bool init() {
  	for (int i = 0; i < nb_error; i++)
  		out_compt[i] = 0;
 
+ 	double out_prev[5];
  	printf("End init Layer for processing\n");
- 	for(int i=0; i<raw_matrix;i++){
- 		out = choose_output(out_process,i);
+ 	for(int i=0; i< raw_matrix_test ;i++){
  		double error= 10.0;
- 		//init_layer(tab_layer[0], matrix_test, i,0);
+ 		out = choose_output(out_process,i);
  		init_value(tab_layer[0],matrix_test,i);
 
+ 		if(i%3==0){
+ 			if(i>0){
+ 				printf("begin readValue\n");
+ 				readvalue(tab_layer);
+ 				printf("end readvalue\n");
+ 				ajustError(tab_layer[NB_LAYOUT-1]);
 
- 		rnnsetstart(tab_layer);
- 		rnnset(tab_layer,out);
- 		ajustError(tab_layer[NB_LAYOUT-1]);
-
- 		//rnnlearn(tab_layer,learn);
- 		error = geterror(tab_layer[NB_LAYOUT-1], out);
+ 				error = geterror(tab_layer[NB_LAYOUT-1], out_prev);
 
 
- 		if (DEBUG)
- 			printf("Error %f\n", error);
+ 				if (DEBUG)
+ 					printf("Error %f\n", error);
 
- 		tab_result = gettab_result(tab_layer[NB_LAYOUT-1]);
- 		compte_resultat(tab_result, out_compt,out, tab_layer[NB_LAYOUT-1]->nbnode, &average_sure);
+ 				tab_result = gettab_result(tab_layer[NB_LAYOUT-1]);
+ 				compte_resultat(tab_result, out_compt, out_prev, tab_layer[NB_LAYOUT-1]->nbnode, &average_sure);
 
- 		if (DEBUG){
- 			printf("Resulat  ligne : %d\n", i);
- 			show_result(tab_result, layer_size[NB_LAYOUT-1]);
+ 				if (DEBUG){
+ 					printf("Resulat  ligne : %d\n", i-3);
+ 					show_result(tab_result, layer_size[NB_LAYOUT-1]);
+ 				}
+
+ 				free(tab_result);
+
+ 			}
+ 			rnnset(tab_layer,1);
+ 			for (int k = 0; k < nb_error; ++k)
+ 			{
+ 				out_prev[k] = out[k];
+ 			}
+ 		}
+ 		else{
+
+ 			rnnsetstart(tab_layer);
+ 			rnnset(tab_layer,0);
+ 			ajustError(tab_layer[NB_LAYOUT-1]);
+
+ 			error = geterror(tab_layer[NB_LAYOUT-1], out);
+
+
+ 			if (DEBUG)
+ 				printf("Error %f\n", error);
+
+ 			tab_result = gettab_result(tab_layer[NB_LAYOUT-1]);
+ 			compte_resultat(tab_result, out_compt,out, tab_layer[NB_LAYOUT-1]->nbnode, &average_sure);
+
+ 			if (DEBUG){
+ 				printf("Resulat  ligne : %d\n", i);
+ 				show_result(tab_result, layer_size[NB_LAYOUT-1]);
+ 			}
  		}
 
+
  		free(out);
- 		free(tab_result);
  	}
 
- 	printf("Finish Testing look into result.csv for result\n");
+ 	printf("Finish Testing\n");
  	end = getCurrentTimestamp() ;
  	printf("Time to execute for Testing : %fd\n", end-start );
  	postprocessing(out_compt);
+ 	printf("overload = %f sec \n", overload);
 
  	free(out_compt);
  	free(matrix_test);

@@ -226,19 +226,19 @@ float* preprocessing(const char* file, int istest){
 }
 
 void postprocessing(int* out){
-  FILE *stream = fopen(resul_name, "w");
-  fprintf(stream, "Nom de l'attaque;nombre dans le fichier;nombre trouvé;différence;precision\n");
+  //FILE *stream = fopen(resul_name, "w");
+  printf("Nom de l'attaque;nombre dans le fichier;nombre trouvé;différence;precision\n");
   for (int i = 0; i < NB_ERROR_MAX; ++i)
   {
     
-    fputs(Name_ERROR[i],stream);
-    fprintf(stream, " %d   ",out_compt[i] );
-    fprintf(stream, " %d   ",out[i] );
-    fprintf(stream, " %d   ",out_compt[i]-out[i]);
-    fprintf(stream, " %f   \n",1.0-(double)((double)out_compt[i]-(double)out[i])/(double)out_compt[i]);
+    //fputs(Name_ERROR[i],stream);
+    printf(" %d   ",out_compt[i] );
+    printf(" %d   ",out[i] );
+    printf(" %d   ",out_compt[i]-out[i]);
     printf(" %f   \n",1.0-(double)((double)out_compt[i]-(double)out[i])/(double)out_compt[i]);
+    //printf(" %f   \n",1.0-(double)((double)out_compt[i]-(double)out[i])/(double)out_compt[i]);
   }
-  fclose(stream);
+  //fclose(stream);
 }
 
 void fill_output(char* element, int k){
