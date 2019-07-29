@@ -710,6 +710,7 @@ bool init() {
  	printf("Temps mis a l'éxécutionn : %fd\n", end-start );
  	printf("average sure : %f tour de boucle pour training moyen : %f \n", average_sure/raw_matrix, jtot/raw_matrix );
  	postprocessing(out_compt);
+ 	printf("overload FPGA for learn= %f\n",overload );
  	free(matrix);
 
  	float* matrix_test = preprocessing(file_name_test,1);
@@ -728,7 +729,6 @@ bool init() {
  	for(int i=0; i<raw_matrix;i++){
  		out = choose_output(out_process,i);
  		double error= 10.0;
- 		//init_layer(tab_layer[0], matrix_test, i,0);
  		init_value(tab_layer[0],matrix_test,i);
 
 
@@ -758,7 +758,7 @@ bool init() {
  	printf("Finish Testing look into result.csv for result\n");
  	end = getCurrentTimestamp() ;
  	printf("Time to execute for Testing : %fd\n", end-start );
- 	printf("overload FPGA = %f\n", overload);
+ 	printf("overload FPGA tot = %f\n", overload);
  	postprocessing(out_compt);
 
  	free(out_compt);
